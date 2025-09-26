@@ -1,0 +1,234 @@
+openapi: 3.0.3
+info:
+  description: REST API для управления коллекцией фильмов.
+  title: Oscar Service API
+  version: 1.0.0
+servers:
+- description: Локальный сервер
+  url: http://localhost:8080/api/oscar
+paths:
+  /directors/get-loosers:
+    get:
+      description: "Возвращает список режиссёров, ни один фильм которых не получил\
+        \ \"Оскара\"."
+      responses:
+        "200":
+          content:
+            application/json:
+              examples:
+                success:
+                  value:
+                  - Director One
+                  - Director Two
+              schema:
+                items:
+                  type: string
+                type: array
+          description: Список режиссёров
+        "400":
+          content:
+            application/json:
+              examples:
+                error:
+                  $ref: '#/components/examples/BadRequestExample'
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Неверный запрос
+        "500":
+          content:
+            application/json:
+              examples:
+                error:
+                  $ref: '#/components/examples/InternalErrorExample'
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Внутренняя ошибка сервера
+      summary: Получить режиссёров без оскаров
+      x-accepts:
+      - application/json
+  /genres/redistribute-rewards/{from-genre}/{to-genre}:
+    post:
+      parameters:
+      - description: "Жанр, откуда забираются награды"
+        explode: false
+        in: path
+        name: from-genre
+        required: true
+        schema:
+          $ref: '#/components/schemas/MovieGenre'
+        style: simple
+      - description: "Жанр, куда передаются награды"
+        explode: false
+        in: path
+        name: to-genre
+        required: true
+        schema:
+          $ref: '#/components/schemas/MovieGenre'
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              examples:
+                success:
+                  value:
+                    transferredCount: 5
+              schema:
+                $ref: '#/components/schemas/_genres_redistribute_rewards__from_genre___to_genre__post_200_response'
+          description: Операция завершена успешно
+        "400":
+          content:
+            application/json:
+              examples:
+                error:
+                  $ref: '#/components/examples/BadRequestExample'
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Неверный запрос
+        "401":
+          content:
+            application/json:
+              examples:
+                error:
+                  $ref: '#/components/examples/UnauthorizedExample'
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Требуется аутентификация
+        "403":
+          content:
+            application/json:
+              examples:
+                error:
+                  $ref: '#/components/examples/ForbiddenExample'
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Доступ запрещен
+        "422":
+          content:
+            application/json:
+              examples:
+                error:
+                  $ref: '#/components/examples/UnprocessableEntityExample'
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Нарушены бизнес-правила
+        "500":
+          content:
+            application/json:
+              examples:
+                error:
+                  $ref: '#/components/examples/InternalErrorExample'
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Внутренняя ошибка сервера
+      summary: Перераспределить Оскары между жанрами
+      x-accepts:
+      - application/json
+components:
+  examples:
+    BadRequestExample:
+      value:
+        errorCode: BAD_REQUEST
+        message: Неверные параметры запроса
+        details:
+        - size must be >= 1
+    InternalErrorExample:
+      value:
+        errorCode: INTERNAL_ERROR
+        message: Внутренняя ошибка сервера
+    UnauthorizedExample:
+      value:
+        errorCode: UNAUTHORIZED
+        message: Требуется аутентификация
+    ForbiddenExample:
+      value:
+        errorCode: FORBIDDEN
+        message: Доступ к ресурсу запрещен
+    UnprocessableEntityExample:
+      value:
+        errorCode: UNPROCESSABLE_ENTITY
+        message: Ошибка валидации
+        details:
+        - oscarsCount must be > 0
+  responses:
+    BadRequest:
+      content:
+        application/json:
+          examples:
+            error:
+              $ref: '#/components/examples/BadRequestExample'
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: Неверный запрос
+    Unauthorized:
+      content:
+        application/json:
+          examples:
+            error:
+              $ref: '#/components/examples/UnauthorizedExample'
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: Требуется аутентификация
+    Forbidden:
+      content:
+        application/json:
+          examples:
+            error:
+              $ref: '#/components/examples/ForbiddenExample'
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: Доступ запрещен
+    UnprocessableEntity:
+      content:
+        application/json:
+          examples:
+            error:
+              $ref: '#/components/examples/UnprocessableEntityExample'
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: Нарушены бизнес-правила
+    InternalError:
+      content:
+        application/json:
+          examples:
+            error:
+              $ref: '#/components/examples/InternalErrorExample'
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: Внутренняя ошибка сервера
+  schemas:
+    Error:
+      example:
+        errorCode: errorCode
+        details:
+        - details
+        - details
+        message: message
+      properties:
+        errorCode:
+          type: string
+        message:
+          type: string
+        details:
+          items:
+            type: string
+          type: array
+      required:
+      - errorCode
+      - message
+      type: object
+    MovieGenre:
+      enum:
+      - DRAMA
+      - MUSICAL
+      - THRILLER
+      - FANTASY
+      type: string
+    _genres_redistribute_rewards__from_genre___to_genre__post_200_response:
+      example:
+        transferredCount: 0
+      properties:
+        transferredCount:
+          type: integer
+      type: object
+

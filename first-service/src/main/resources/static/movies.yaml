@@ -1,0 +1,608 @@
+openapi: 3.0.3
+info:
+  title: Movie Collection API
+  description: REST API для управления коллекцией фильмов.
+  version: "1.0.0"
+
+servers:
+  - url: http://localhost:8080/api
+    description: Локальный сервер
+
+paths:
+  /movies/search:
+    post:
+      summary: Получить список фильмов с фильтрацией и сортировкой
+      security: [ ]
+      description: |
+        Возвращает список фильмов с возможностью фильтрации, сортировки и пагинации.  
+        Фильтрация передаётся в теле запроса в формате JSON.  
+        
+        Поддерживаются следующие операторы фильтрации:
+        - `eq` — равно, например `"name[eq]": "Inception"`
+        - `ne` — не равно, например `"genre[ne]": "DRAMA"`
+        - `gt` — больше, например `"coordinates.x[gt]": 10`
+        - `lt` — меньше, например `"operator.height[lt]": 180`
+        - `gte` — больше или равно, например `"oscarsCount[gte]": 3`
+        - `lte` — меньше или равно, например `"operator.weight[lte]": 80`
+        - `in` — значение из списка, например `"genre[in]": ["THRILLER","FANTASY"]`
+        
+        Фильтровать можно по следующим полям:
+        - `id`
+        - `name`
+        - `coordinates.x`
+        - `coordinates.y`
+        - `creationDate`
+        - `oscarsCount`
+        - `genre`
+        - `mpaaRating`
+        - `operator.name`
+        - `operator.height`
+        - `operator.weight`
+        - `operator.location.x`
+        - `operator.location.y`
+        - `operator.location.z`
+        
+        Сортировка указывается в формате `"поле:asc|desc"`, допускаются вложенные поля, например `"coordinates.y:desc"`.
+          requestBody:
+        required: true
+        description: |
+          Фильтры по полям фильма, включая вложенные объекты.  
+          Формат: `{ "field[operator]": value }`, например `"coordinates.x[gt]": 10`
+          Сортировка в формате "поле:asc|desc", допускаются вложенные поля
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filter:
+                  type: object
+                  description: |
+                    Фильтры по полям фильма, включая вложенные объекты.  
+                    Формат: `{ "field[operator]": value }`, например `"coordinates.x[gt]": 10`
+                  additionalProperties:
+                    oneOf:
+                      - type: string
+                      - type: number
+                      - type: array
+                sort:
+                  type: array
+                  description: Сортировка в формате "поле:asc|desc", допускаются вложенные поля
+                  items:
+                    type: string
+                page:
+                  type: integer
+                  default: 1
+                  minimum: 0
+                size:
+                  type: integer
+                  default: 20
+                  minimum: 1
+                  maximum: 100
+              required:
+                - filter
+      responses:
+        '200':
+          description: Список фильмов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Movie'
+              examples:
+                success:
+                  $ref: '#/components/examples/MovieListExample'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+
+  /movies:
+    post:
+      summary: Добавить новый фильм
+      security:
+        - Bearer: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MovieInput'
+            examples:
+              request:
+                $ref: '#/components/examples/MovieInputExample'
+      responses:
+        '201':
+          description: Фильм успешно добавлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+              examples:
+                success:
+                  $ref: '#/components/examples/MovieExample'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /movies/{id}:
+    get:
+      summary: Получить фильм по ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Найденный фильм
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+              examples:
+                success:
+                  $ref: '#/components/examples/MovieExample'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      summary: Обновить фильм по ID
+      security:
+        - Bearer: [ ]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MovieInput'
+            examples:
+              request:
+                $ref: '#/components/examples/MovieInputExample'
+      responses:
+        '200':
+          description: Фильм обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+              examples:
+                success:
+                  $ref: '#/components/examples/MovieExample'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      summary: Удалить фильм по ID
+      security:
+        - Bearer: [ ]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '204':
+          description: Фильм удален
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /movies/by-max-genre:
+    get:
+      summary: Получить фильм с максимальным жанром
+      parameters:
+        - in: query
+          name: Genre
+          required: true
+          schema:
+            $ref: '#/components/schemas/MovieGenre'
+      responses:
+        '200':
+          description: Фильм с максимальным жанром
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+              examples:
+                success:
+                  $ref: '#/components/examples/MovieExample'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /movies/count/by-operator-weight:
+    get:
+      summary: Количество фильмов, где вес оператора больше заданного
+      parameters:
+        - in: query
+          name: weight
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Количество фильмов
+          content:
+            application/json:
+              schema:
+                type: integer
+              examples:
+                count:
+                  value: {"count": 7}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    Bearer:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: >
+        Введите токен с префиксом `Bearer `, например: "Bearer abcde12345".
+  schemas:
+    Movie:
+      type: object
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+          minLength: 1
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
+        creationDate:
+          type: string
+          format: date
+        oscarsCount:
+          type: integer
+          minimum: 1
+        genre:
+          $ref: '#/components/schemas/MovieGenre'
+        mpaaRating:
+          $ref: '#/components/schemas/MpaaRating'
+        operator:
+          $ref: '#/components/schemas/Person'
+      required:
+        - id
+        - name
+        - coordinates
+        - creationDate
+        - oscarsCount
+        - mpaaRating
+        - operator
+
+    MovieInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
+        oscarsCount:
+          type: integer
+          minimum: 1
+        genre:
+          $ref: '#/components/schemas/MovieGenre'
+        mpaaRating:
+          $ref: '#/components/schemas/MpaaRating'
+        operator:
+          $ref: '#/components/schemas/Person'
+      required:
+        - name
+        - coordinates
+        - oscarsCount
+        - mpaaRating
+        - operator
+
+    Coordinates:
+      type: object
+      properties:
+        x:
+          type: integer
+        y:
+          type: number
+          format: float
+          maximum: 102
+      required:
+        - x
+
+
+    Person:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        height:
+          type: number
+          format: float
+          minimum: 0.0000001
+        weight:
+          type: integer
+          minimum: 1
+          nullable: true
+        location:
+          $ref: '#/components/schemas/Location'
+      required:
+        - name
+        - height
+        - location
+
+    Location:
+      type: object
+      properties:
+        x:
+          type: integer
+        y:
+          type: integer
+        z:
+          type: integer
+      required:
+        - x
+        - z
+
+    MovieGenre:
+      type: string
+      enum:
+        - DRAMA
+        - MUSICAL
+        - THRILLER
+        - FANTASY
+
+    MpaaRating:
+      type: string
+      enum:
+        - PG
+        - R
+        - NC_17
+
+    Error:
+      type: object
+      properties:
+        errorCode:
+          type: string
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: string
+      required:
+        - errorCode
+        - message
+
+  responses:
+    BadRequest:
+      description: Неверный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            error:
+              $ref: '#/components/examples/BadRequestExample'
+
+    Unauthorized:
+      description: Требуется аутентификация
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            error:
+              $ref: '#/components/examples/UnauthorizedExample'
+
+    Forbidden:
+      description: Доступ запрещен
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            error:
+              $ref: '#/components/examples/ForbiddenExample'
+
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            error:
+              $ref: '#/components/examples/NotFoundExample'
+
+    Conflict:
+      description: Конфликт данных
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            error:
+              $ref: '#/components/examples/ConflictExample'
+
+    UnprocessableEntity:
+      description: Нарушены бизнес-правила
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            error:
+              $ref: '#/components/examples/UnprocessableEntityExample'
+
+    InternalError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            error:
+              $ref: '#/components/examples/InternalErrorExample'
+
+  examples:
+    MovieExample:
+      value:
+        id: 1
+        name: Inception
+        coordinates:
+          x: 42
+          y: 98.2
+        creationDate: 2010-07-16
+        oscarsCount: 4
+        genre: THRILLER
+        mpaaRating: PG
+        operator:
+          name: John Doe
+          height: 180.5
+          weight: 75
+          location:
+            x: 10
+            y: 20
+            z: 30
+
+    MovieInputExample:
+      value:
+        name: Interstellar
+        coordinates:
+          x: 12
+          y: 56.7
+        oscarsCount: 5
+        genre: FANTASY
+        mpaaRating: PG
+        operator:
+          name: Jane Doe
+          height: 170
+          weight: 65
+          location:
+            x: 5
+            y: 10
+            z: 15
+
+    MovieListExample:
+      value:
+        - id: 1
+          name: Inception
+          coordinates:
+            x: 42
+            y: 98.2
+          creationDate: 2010-07-16
+          oscarsCount: 4
+          genre: THRILLER
+          mpaaRating: PG
+          operator:
+            name: John Doe
+            height: 180.5
+            weight: 75
+            location:
+              x: 10
+              y: 20
+              z: 30
+        - id: 2
+          name: Interstellar
+          coordinates:
+            x: 12
+            y: 56.7
+          creationDate: 2014-11-07
+          oscarsCount: 5
+          genre: FANTASY
+          mpaaRating: PG
+          operator:
+            name: Jane Doe
+            height: 170
+            weight: 65
+            location:
+              x: 5
+              y: 10
+              z: 15
+
+    BadRequestExample:
+      value:
+        errorCode: BAD_REQUEST
+        message: Неверные параметры запроса
+        details:
+          - size must be >= 1
+
+    UnauthorizedExample:
+      value:
+        errorCode: UNAUTHORIZED
+        message: Требуется аутентификация
+
+    ForbiddenExample:
+      value:
+        errorCode: FORBIDDEN
+        message: Доступ к ресурсу запрещен
+
+    NotFoundExample:
+      value:
+        errorCode: NOT_FOUND
+        message: Ресурс не найден
+
+    ConflictExample:
+      value:
+        errorCode: CONFLICT
+        message: Конфликт данных
+
+    UnprocessableEntityExample:
+      value:
+        errorCode: UNPROCESSABLE_ENTITY
+        message: Ошибка валидации
+        details:
+          - oscarsCount must be > 0
+
+    InternalErrorExample:
+      value:
+        errorCode: INTERNAL_ERROR
+        message: Внутренняя ошибка сервера

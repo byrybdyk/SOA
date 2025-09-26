@@ -1,0 +1,8 @@
+version: "3.8"
+
+services:
+  wildfly:
+    build: .
+    container_name: second-service
+    ports:
+      - "8443:8443"

@@ -21,6 +21,10 @@ tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
 
+war {
+    archiveFileName = 'second-service.war'
+}
+
 dependencies {
     compileOnly('jakarta.enterprise:jakarta.enterprise.cdi-api:4.1.0')
     compileOnly('jakarta.ws.rs:jakarta.ws.rs-api:4.0.0')
@@ -31,6 +35,8 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
 }
+
+
 
 test {
     useJUnitPlatform()

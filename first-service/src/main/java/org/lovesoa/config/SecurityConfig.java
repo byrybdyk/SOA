@@ -1,51 +1,46 @@
 package org.lovesoa.config;
 
 import org.lovesoa.security.jwt.JwtAuthenticationFilter;
+import org.lovesoa.security.jwt.JwtService;
 import org.lovesoa.security.utils.UserDetailsServiceImpl;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Autowired
-    private UserDetailsServiceImpl userDetailsService;
-    @Autowired
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
-
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            JwtAuthenticationFilter jwtAuthenticationFilter
+    ) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/auth/register", "/auth/login").permitAll()
+                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
                 )
-                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 
     @Bean
-    public AuthenticationManager authManager(HttpSecurity http) throws Exception {
-        AuthenticationManagerBuilder authenticationManagerBuilder =
-                http.getSharedObject(AuthenticationManagerBuilder.class);
-        authenticationManagerBuilder
-                .userDetailsService(userDetailsService)
-                .passwordEncoder(passwordEncoder());
-        return authenticationManagerBuilder.build();
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
     }
 
     @Bean

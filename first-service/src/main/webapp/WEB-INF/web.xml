@@ -19,6 +19,4 @@
         <param-value>false</param-value>
     </context-param>
 
-    <!-- Явно отключаем все слушатели -->
-    <absolute-ordering />
 </web-app>

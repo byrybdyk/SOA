@@ -36,9 +36,12 @@ public class PersistenceConfig {
 
         Properties jpaProps = new Properties();
         jpaProps.put("hibernate.hbm2ddl.auto", "update");
-        jpaProps.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
         jpaProps.put("hibernate.show_sql", "true");
         jpaProps.put("hibernate.format_sql", "true");
+
+        // Явно отключаем XML и указываем использовать JSON
+        jpaProps.put("hibernate.format_mapper", "json");
+        jpaProps.put("hibernate.type.json_format_mapper", "jackson");
 
         emf.setJpaProperties(jpaProps);
         return emf;

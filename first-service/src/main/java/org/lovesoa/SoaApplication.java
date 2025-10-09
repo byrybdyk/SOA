@@ -1,29 +1,19 @@
-//package org.lovesoa;
-//
-//import org.lovesoa.config.AppConfig;
-//import org.lovesoa.config.PersistenceConfig;
-//import org.lovesoa.config.SecurityConfig;
-//import org.lovesoa.config.WebConfig;
-//import org.springframework.web.servlet.support.AbstractAnnotationConfigDispatcherServletInitializer;
-//
-//public class SoaApplication extends AbstractAnnotationConfigDispatcherServletInitializer {
-//
-//    @Override
-//    protected Class<?>[] getRootConfigClasses() {
-//        return new Class<?>[] {
-//                AppConfig.class,
-//                SecurityConfig.class,
-//                PersistenceConfig.class
-//        };
-//    }
-//
-//    @Override
-//    protected Class<?>[] getServletConfigClasses() {
-//        return new Class<?>[] { WebConfig.class };
-//    }
-//
-//    @Override
-//    protected String[] getServletMappings() {
-//        return new String[] { "/" };
-//    }
-//}
+package org.lovesoa;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
+
+@SpringBootApplication
+public class SoaApplication extends SpringBootServletInitializer {
+
+    @Override
+    protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
+        return application.sources(SoaApplication.class);
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(SoaApplication.class, args);
+    }
+}

@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: my-postgres
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: soa
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d soa"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+
+  first-service:
+    build: ./first-service
+    container_name: first-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
+  second-service:
+    build: ./second-service
+    container_name: second-service
+    ports:
+      - "8081:8081"
+      - "8443:8443"
+    depends_on:
+      - first-service
+    environment: {}
+
+volumes:
+  postgres-data:

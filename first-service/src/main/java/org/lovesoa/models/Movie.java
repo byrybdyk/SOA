@@ -26,9 +26,8 @@ public class Movie {
     @JoinColumn(name = "coordinates_id", referencedColumnName = "id")
     private Coordinates coordinates;
 
-    @NotNull
-    @Column(nullable = false)
-    private LocalDate creationDate;
+    @Column(name = "creation_date", nullable = false)
+    private LocalDate creationDate = LocalDate.now();
 
     @NotNull
     @Positive

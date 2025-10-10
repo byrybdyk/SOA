@@ -65,7 +65,7 @@ public class MovieSearchService {
                 .setMaxResults(pageSize)
                 .getResultList();
 
-        // Подсчет общего числа элементов
+
         CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
         Root<Movie> countRoot = countQuery.from(Movie.class);
         countQuery.select(cb.count(countRoot));

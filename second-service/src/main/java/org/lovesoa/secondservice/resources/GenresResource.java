@@ -4,6 +4,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import org.lovesoa.secondservice.client.MoviesClient;
+import org.lovesoa.secondservice.dto.RedistributeRewardsResponseDTO;
 import org.lovesoa.secondservice.dto.movies.MovieResponseDTO;
 import org.lovesoa.secondservice.dto.movies.MovieSearchRequest;
 
@@ -20,51 +21,48 @@ public class GenresResource {
 
     @POST
     @Path("/redistribute-rewards/{fromGenre}/{toGenre}")
-    public Map<String, Object> redistributeOscars(
+    public RedistributeRewardsResponseDTO redistributeRewards(
+            @HeaderParam("Authorization") String bearerToken,
             @PathParam("fromGenre") String fromGenre,
-            @PathParam("toGenre") String toGenre,
-            @HeaderParam("Authorization") String bearerToken
+            @PathParam("toGenre") String toGenre
     ) {
         if (bearerToken == null || bearerToken.isBlank())
             throw new BadRequestException("Bearer-токен обязателен");
 
         String token = bearerToken.replace("Bearer ", "");
 
-        // Получаем все фильмы
-        MovieSearchRequest request = new MovieSearchRequest();
-        List<MovieResponseDTO> allMovies = moviesClient.searchMovies(request, token).getContent();
+        MovieSearchRequest fromRequest = new MovieSearchRequest();
+        fromRequest.setFilters(Map.of(
+                "genre[eq]", fromGenre,
+                "oscarsCount[gt]", 0
+        ));
+        List<MovieResponseDTO> fromMovies = moviesClient.searchMovies(fromRequest, token).getContent();
 
-        List<MovieResponseDTO> from = allMovies.stream()
-                .filter(m -> fromGenre.equalsIgnoreCase(m.getGenre()))
-                .collect(Collectors.toList());
+        MovieSearchRequest toRequest = new MovieSearchRequest();
+        toRequest.setFilters(Map.of(
+                "genre[eq]", toGenre
+        ));
+        List<MovieResponseDTO> toMovies = moviesClient.searchMovies(toRequest, token).getContent();
 
-        List<MovieResponseDTO> to = allMovies.stream()
-                .filter(m -> toGenre.equalsIgnoreCase(m.getGenre()))
-                .collect(Collectors.toList());
+        int totalOscars = fromMovies.stream().mapToInt(MovieResponseDTO::getOscarsCount).sum();
 
-        int totalOscars = from.stream().mapToInt(m -> Optional.ofNullable(m.getOscarsCount()).orElse(0)).sum();
-        int countTo = to.size();
-
-        if (countTo == 0)
-            throw new BadRequestException("Нет фильмов жанра " + toGenre + " для перераспределения");
-
-        int perMovie = totalOscars / countTo;
-
-        // Обновляем: у from жанра — 0, у to — добавляем
-        for (MovieResponseDTO movie : from) {
-            moviesClient.updateMovieOscars(movie.getId(), 0, token);
+        for (MovieResponseDTO movie : fromMovies) {
+            moviesClient.updateMovieOscars(movie, 0, token);
+            movie.setOscarsCount(0);
         }
 
-        for (MovieResponseDTO movie : to) {
-            int newCount = perMovie;
-            moviesClient.updateMovieOscars(movie.getId(), newCount, token);
+        Random random = new Random();
+        for (int i = 0; i < totalOscars; i++) {
+            if (toMovies.isEmpty()) break;
+            MovieResponseDTO randomMovie = toMovies.get(random.nextInt(toMovies.size()));
+            int newCount = randomMovie.getOscarsCount() + 1;
+            moviesClient.updateMovieOscars(randomMovie, newCount, token);
+            randomMovie.setOscarsCount(newCount);
         }
 
-        return Map.of(
-                "redistributedFrom", fromGenre,
-                "redistributedTo", toGenre,
-                "oscarsMoved", totalOscars,
-                "oscarsPerMovie", perMovie
-        );
+        RedistributeRewardsResponseDTO response = new RedistributeRewardsResponseDTO();
+        response.setTransferredCount(totalOscars);
+        return response;
     }
+
 }

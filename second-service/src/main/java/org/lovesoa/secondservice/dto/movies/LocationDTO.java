@@ -5,7 +5,7 @@ import lombok.Data;
 @Data
 public class LocationDTO {
     private Long id;
-    private Double x;
-    private Double y;
-    private Double z;
+    private Integer x;
+    private Integer y;
+    private Long z;
 }

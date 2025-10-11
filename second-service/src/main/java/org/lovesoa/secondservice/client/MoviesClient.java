@@ -5,6 +5,7 @@ import jakarta.ws.rs.client.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.lovesoa.secondservice.dto.MovieCreateRequest;
 import org.lovesoa.secondservice.dto.movies.*;
 import org.lovesoa.secondservice.dto.pagable.PageableDTO;
 import org.lovesoa.secondservice.dto.pagable.SortDTO;
@@ -37,53 +38,60 @@ public class MoviesClient {
         }
 
         try {
+            System.out.println("Raw response from first service: " + rawResponse);
+
             Map<String, Object> pageMap = objectMapper.readValue(rawResponse, Map.class);
+            List<Map<String, Object>> contentList = pageMap.get("content") != null
+                    ? objectMapper.convertValue(pageMap.get("content"), List.class)
+                    : Collections.emptyList();
 
-            List<Map<String, Object>> contentList = (List<Map<String, Object>>) pageMap.get("content");
             List<MovieResponseDTO> movies = new ArrayList<>();
-            if (contentList != null) {
-                for (Map<String, Object> item : contentList) {
-                    MovieResponseDTO dto = new MovieResponseDTO();
-                    dto.setId(item.get("id") != null ? ((Number) item.get("id")).longValue() : null);
-                    dto.setName((String) item.get("name"));
-                    dto.setGenre((String) item.get("genre"));
-                    dto.setOscarsCount(item.get("oscarsCount") != null ? ((Number) item.get("oscarsCount")).intValue() : 0);
+            for (Map<String, Object> item : contentList) {
+                MovieResponseDTO dto = new MovieResponseDTO();
+                dto.setId(item.get("id") != null ? ((Number) item.get("id")).longValue() : null);
+                dto.setName(item.getOrDefault("name", "").toString());
+                dto.setGenre(item.getOrDefault("genre", "").toString());
+                dto.setOscarsCount(item.get("oscarsCount") != null ? ((Number) item.get("oscarsCount")).intValue() : 0);
+                dto.setCreationDate(item.getOrDefault("creationDate", null) != null ? item.get("creationDate").toString() : null);
+                dto.setMpaaRating(item.getOrDefault("mpaaRating", null) != null ? item.get("mpaaRating").toString() : null);
 
-                    Map<String, Object> coordinatesMap = (Map<String, Object>) item.get("coordinates");
-                    if (coordinatesMap != null) {
-                        CoordinatesDTO coords = new CoordinatesDTO();
-                        coords.setId(coordinatesMap.get("id") != null ? ((Number) coordinatesMap.get("id")).longValue() : null);
-                        coords.setX(coordinatesMap.get("x") != null ? ((Number) coordinatesMap.get("x")).doubleValue() : 0);
-                        coords.setY(coordinatesMap.get("y") != null ? ((Number) coordinatesMap.get("y")).doubleValue() : 0);
-                        dto.setCoordinates(coords);
-                    }
-
-                    dto.setCreationDate((String) item.get("creationDate"));
-                    dto.setMpaaRating((String) item.get("mpaaRating"));
-
-                    Map<String, Object> operatorMap = (Map<String, Object>) item.get("operator");
-                    if (operatorMap != null) {
-                        OperatorDTO operator = new OperatorDTO();
-                        operator.setId(operatorMap.get("id") != null ? ((Number) operatorMap.get("id")).longValue() : null);
-                        operator.setName((String) operatorMap.get("name"));
-                        operator.setHeight(operatorMap.get("height") != null ? ((Number) operatorMap.get("height")).doubleValue() : null);
-                        operator.setWeight(operatorMap.get("weight") != null ? ((Number) operatorMap.get("weight")).doubleValue() : null);
-
-                        Map<String, Object> locationMap = (Map<String, Object>) operatorMap.get("location");
-                        if (locationMap != null) {
-                            LocationDTO loc = new LocationDTO();
-                            loc.setId(locationMap.get("id") != null ? ((Number) locationMap.get("id")).longValue() : null);
-                            loc.setX(locationMap.get("x") != null ? ((Number) locationMap.get("x")).doubleValue() : null);
-                            loc.setY(locationMap.get("y") != null ? ((Number) locationMap.get("y")).doubleValue() : null);
-                            loc.setZ(locationMap.get("z") != null ? ((Number) locationMap.get("z")).doubleValue() : null);
-                            operator.setLocation(loc);
-                        }
-
-                        dto.setOperator(operator);
-                    }
-
-                    movies.add(dto);
+                Map<String, Object> coordinatesMap = item.get("coordinates") != null
+                        ? objectMapper.convertValue(item.get("coordinates"), Map.class)
+                        : null;
+                if (coordinatesMap != null) {
+                    CoordinatesDTO coords = new CoordinatesDTO();
+                    coords.setId(coordinatesMap.get("id") != null ? ((Number) coordinatesMap.get("id")).longValue() : null);
+                    coords.setX(coordinatesMap.get("x") != null ? ((Number) coordinatesMap.get("x")).doubleValue() : 0);
+                    coords.setY(coordinatesMap.get("y") != null ? ((Number) coordinatesMap.get("y")).doubleValue() : 0);
+                    dto.setCoordinates(coords);
                 }
+
+                Map<String, Object> operatorMap = item.get("operator") != null
+                        ? objectMapper.convertValue(item.get("operator"), Map.class)
+                        : null;
+                if (operatorMap != null) {
+                    OperatorDTO operator = new OperatorDTO();
+                    operator.setId(operatorMap.get("id") != null ? ((Number) operatorMap.get("id")).longValue() : null);
+                    operator.setName(operatorMap.getOrDefault("name", "").toString());
+                    operator.setHeight(operatorMap.get("height") != null ? ((Number) operatorMap.get("height")).doubleValue() : null);
+                    operator.setWeight(operatorMap.get("weight") != null ? ((Number) operatorMap.get("weight")).doubleValue() : null);
+
+                    Map<String, Object> locationMap = operatorMap.get("location") != null
+                            ? objectMapper.convertValue(operatorMap.get("location"), Map.class)
+                            : null;
+                    if (locationMap != null) {
+                        LocationDTO loc = new LocationDTO();
+                        loc.setId(locationMap.get("id") != null ? ((Number) locationMap.get("id")).longValue() : null);
+                        loc.setX(locationMap.get("x") != null ? ((Number) locationMap.get("x")).intValue() : null);
+                        loc.setY(locationMap.get("y") != null ? ((Number) locationMap.get("y")).intValue() : null);
+                        loc.setZ(locationMap.get("z") != null ? ((Number) locationMap.get("z")).longValue() : null);
+                        operator.setLocation(loc);
+                    }
+
+                    dto.setOperator(operator);
+                }
+
+                movies.add(dto);
             }
 
             int pageNumber = pageMap.get("number") != null ? ((Number) pageMap.get("number")).intValue() : 0;
@@ -120,31 +128,63 @@ public class MoviesClient {
             return pageDTO;
 
         } catch (Exception e) {
-            throw new RuntimeException("Ошибка обработки JSON-ответа", e);
+            throw new RuntimeException("Ошибка обработки JSON-ответа: " + e.getMessage(), e);
         }
     }
 
-    public void updateMovieOscars(Long movieId, int newCount, String bearerToken) {
-        WebTarget target = client.target(BASE_URL).path(String.valueOf(movieId));
 
-        System.out.println("=== MoviesClient.updateMovieOscars ===");
-        System.out.println("URL: " + target.getUri());
-        System.out.println("Bearer token: " + bearerToken);
-        System.out.println("New oscarsCount: " + newCount);
-
+    public void updateMovieOscars(MovieResponseDTO movie, int newCount, String bearerToken) {
+        WebTarget target = client.target(BASE_URL).path(String.valueOf(movie.getId()));
         Invocation.Builder builder = target
                 .request(MediaType.APPLICATION_JSON_TYPE)
                 .header("Authorization", "Bearer " + bearerToken);
 
-        Map<String, Object> update = Map.of("oscarsCount", newCount);
-        Response response = builder.put(Entity.json(update));
+        MovieCreateRequest request = new MovieCreateRequest();
+        request.setName(movie.getName());
+        request.setGenre(movie.getGenre());
+        request.setOscarsCount(newCount);
+        request.setMpaaRating(movie.getMpaaRating());
 
-        String rawResponse = response.readEntity(String.class);
-        System.out.println("HTTP status: " + response.getStatus());
-        System.out.println("Raw response: " + rawResponse);
+        MovieCreateRequest.CoordinatesDto coords = new MovieCreateRequest.CoordinatesDto();
+        if (movie.getCoordinates() != null) {
+            coords.setX((int) movie.getCoordinates().getX());
+            coords.setY((float) movie.getCoordinates().getY());
+        } else {
+            coords.setX(0);
+            coords.setY(0f);
+        }
+        request.setCoordinates(coords);
+
+        MovieCreateRequest.PersonDto operator = new MovieCreateRequest.PersonDto();
+        if (movie.getOperator() != null) {
+            operator.setName(movie.getOperator().getName());
+            operator.setHeight(movie.getOperator().getHeight().floatValue());
+            operator.setWeight(movie.getOperator().getWeight().intValue());
+
+            MovieCreateRequest.PersonDto.LocationDto location = new MovieCreateRequest.PersonDto.LocationDto();
+            if (movie.getOperator().getLocation() != null) {
+                location.setX(movie.getOperator().getLocation().getX().intValue());
+                location.setY( (int) movie.getOperator().getLocation().getY());
+                location.setZ(movie.getOperator().getLocation().getZ().longValue());
+            } else {
+                location.setX(0);
+                location.setY(0);
+                location.setZ(0L);
+            }
+            operator.setLocation(location);
+        } else {
+            operator.setName("Unknown");
+            operator.setHeight(0f);
+            operator.setWeight(0);
+            operator.setLocation(new MovieCreateRequest.PersonDto.LocationDto(0,0,0L));
+        }
+        request.setOperator(operator);
+
+        Response response = builder.put(Entity.json(request));
 
         if (response.getStatus() != 200) {
-            throw new RuntimeException("Ошибка обновления фильма " + movieId + ": " + response.getStatus());
+            throw new RuntimeException("Ошибка обновления фильма " + movie.getId() + ": " + response.getStatus());
         }
     }
+
 }

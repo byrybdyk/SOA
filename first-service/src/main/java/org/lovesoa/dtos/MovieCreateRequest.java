@@ -16,7 +16,7 @@ public class MovieCreateRequest {
     private CoordinatesDto coordinates;
 
     @NotNull
-    @Min(1)
+    @Min(0)
     private Integer oscarsCount;
 
     private String genre; // можно будет мапить на enum

@@ -2,7 +2,7 @@ package org.lovesoa.models;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.*;
 import java.time.LocalDate;
 
@@ -30,7 +30,7 @@ public class Movie {
     private LocalDate creationDate = LocalDate.now();
 
     @NotNull
-    @Positive
+    @PositiveOrZero
     @Column(nullable = false)
     private Integer oscarsCount;
 

@@ -18,14 +18,13 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
-
   first-service:
     build: ./first-service
     container_name: first-service
     hostname: localhost
     ports:
       - "8080:8080"
-      - "4848:4848"
+      - "4848:4848"   # Admin console
     depends_on:
       postgres:
         condition: service_healthy
@@ -36,9 +35,9 @@ services:
       DB_USER: user
       DB_PASSWORD: password
       JAVA_OPTS: "-Dcom.sun.aas.hostName=localhost"
+    volumes:
+      - gradle-cache:/home/gradle/.gradle
     restart: always
-
-
 
   second-service:
     build: ./second-service
@@ -48,7 +47,11 @@ services:
       - "8443:8443"
     depends_on:
       - first-service
+    volumes:
+      - gradle-cache:/home/gradle/.gradle
     environment: {}
+    restart: always
 
 volumes:
   postgres-data:
+  gradle-cache:

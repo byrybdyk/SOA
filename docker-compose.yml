@@ -22,11 +22,22 @@ services:
   first-service:
     build: ./first-service
     container_name: first-service
+    hostname: localhost
     ports:
       - "8080:8080"
+      - "4848:4848"
     depends_on:
       postgres:
         condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: soa
+      DB_USER: user
+      DB_PASSWORD: password
+      JAVA_OPTS: "-Dcom.sun.aas.hostName=localhost"
+    restart: always
+
 
 
   second-service:

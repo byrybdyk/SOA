@@ -15,7 +15,7 @@ import java.util.*;
 @ApplicationScoped
 public class MoviesClient {
 
-    private static final String BASE_URL = "http://first-service:8080/movies";
+    private static final String BASE_URL = "http://localhost:8080/first-service/movies";
     private final Client client = ClientBuilder.newClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
 

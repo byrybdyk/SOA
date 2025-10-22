@@ -8,6 +8,8 @@ import lombok.*;
 @Builder
 public class MovieCreateRequest {
 
+    private Long id;
+
     private String name;
 
     private CoordinatesDto coordinates;

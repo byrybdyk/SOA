@@ -54,10 +54,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             final String jwt = authHeader.substring(7);
             final String username = jwtService.extractUsername(jwt);
 
+            System.out.println("[JWT Filter] Token valid, username: " + username);
+
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
 
             if (username != null && authentication == null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+
+                System.out.println("[JWT Filter] User found: " + userDetails.getUsername());
+                System.out.println("[JWT Filter] Roles: " + userDetails.getAuthorities());
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
@@ -67,6 +73,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+                else {
+                    System.out.println("[JWT Filter] Invalid token");
                 }
             }
 

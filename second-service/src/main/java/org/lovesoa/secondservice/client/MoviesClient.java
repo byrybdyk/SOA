@@ -15,10 +15,11 @@ import java.util.*;
 @ApplicationScoped
 public class MoviesClient {
 
-    private static final String BASE_URL = "http://localhost:8080/first-service/movies";
+    private static final String BASE_URL = "http://first-service:8080/first-service/movies";
     private final Client client = ClientBuilder.newClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    // --- поиск фильмов ---
     public MoviePageDTO searchMovies(MovieSearchRequest request, String bearerToken) {
         if (request.getFilters() == null) request.setFilters(new HashMap<>());
         if (request.getSort() == null) request.setSort(new ArrayList<>());
@@ -26,6 +27,7 @@ public class MoviesClient {
         if (request.getSize() == null) request.setSize(20);
 
         WebTarget target = client.target(BASE_URL + "/search");
+        System.out.println("Request URL: '" + target.getUri() + "'");
         Invocation.Builder builder = target
                 .request(MediaType.APPLICATION_JSON_TYPE)
                 .header("Authorization", "Bearer " + bearerToken);
@@ -38,8 +40,6 @@ public class MoviesClient {
         }
 
         try {
-            System.out.println("Raw response from first service: " + rawResponse);
-
             Map<String, Object> pageMap = objectMapper.readValue(rawResponse, Map.class);
             List<Map<String, Object>> contentList = pageMap.get("content") != null
                     ? objectMapper.convertValue(pageMap.get("content"), List.class)
@@ -132,26 +132,36 @@ public class MoviesClient {
         }
     }
 
-
-    public void updateMovieOscars(MovieResponseDTO movie, int newCount, String bearerToken) {
-        WebTarget target = client.target(BASE_URL).path(String.valueOf(movie.getId()));
+    public void updateMoviesBatch(List<MovieResponseDTO> movies, String bearerToken) {
+        WebTarget target = client.target(BASE_URL);
         Invocation.Builder builder = target
                 .request(MediaType.APPLICATION_JSON_TYPE)
                 .header("Authorization", "Bearer " + bearerToken);
 
+        List<MovieCreateRequest> requests = new ArrayList<>();
+        for (MovieResponseDTO movie : movies) {
+            requests.add(buildMovieCreateRequest(movie, movie.getOscarsCount()));
+        }
+
+        Response response = builder.put(Entity.json(requests));
+
+        if (response.getStatus() != 200) {
+            throw new RuntimeException("Ошибка пакетного обновления фильмов: " + response.getStatus());
+        }
+    }
+
+    private MovieCreateRequest buildMovieCreateRequest(MovieResponseDTO movie, int oscarsCount) {
         MovieCreateRequest request = new MovieCreateRequest();
+        request.setId(movie.getId());
         request.setName(movie.getName());
         request.setGenre(movie.getGenre());
-        request.setOscarsCount(newCount);
+        request.setOscarsCount(oscarsCount);
         request.setMpaaRating(movie.getMpaaRating());
 
         MovieCreateRequest.CoordinatesDto coords = new MovieCreateRequest.CoordinatesDto();
         if (movie.getCoordinates() != null) {
             coords.setX((int) movie.getCoordinates().getX());
             coords.setY((float) movie.getCoordinates().getY());
-        } else {
-            coords.setX(0);
-            coords.setY(0f);
         }
         request.setCoordinates(coords);
 
@@ -164,27 +174,12 @@ public class MoviesClient {
             MovieCreateRequest.PersonDto.LocationDto location = new MovieCreateRequest.PersonDto.LocationDto();
             if (movie.getOperator().getLocation() != null) {
                 location.setX(movie.getOperator().getLocation().getX().intValue());
-                location.setY( (int) movie.getOperator().getLocation().getY());
+                location.setY(movie.getOperator().getLocation().getY().intValue());
                 location.setZ(movie.getOperator().getLocation().getZ().longValue());
-            } else {
-                location.setX(0);
-                location.setY(0);
-                location.setZ(0L);
             }
             operator.setLocation(location);
-        } else {
-            operator.setName("Unknown");
-            operator.setHeight(0f);
-            operator.setWeight(0);
-            operator.setLocation(new MovieCreateRequest.PersonDto.LocationDto(0,0,0L));
         }
         request.setOperator(operator);
-
-        Response response = builder.put(Entity.json(request));
-
-        if (response.getStatus() != 200) {
-            throw new RuntimeException("Ошибка обновления фильма " + movie.getId() + ": " + response.getStatus());
-        }
+        return request;
     }
-
 }

@@ -8,9 +8,7 @@ import org.lovesoa.secondservice.dto.RedistributeRewardsResponseDTO;
 import org.lovesoa.secondservice.dto.movies.MovieResponseDTO;
 import org.lovesoa.secondservice.dto.movies.MovieSearchRequest;
 
-
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Path("/genres")
 @Produces(MediaType.APPLICATION_JSON)
@@ -39,30 +37,24 @@ public class GenresResource {
         List<MovieResponseDTO> fromMovies = moviesClient.searchMovies(fromRequest, token).getContent();
 
         MovieSearchRequest toRequest = new MovieSearchRequest();
-        toRequest.setFilters(Map.of(
-                "genre[eq]", toGenre
-        ));
+        toRequest.setFilters(Map.of("genre[eq]", toGenre));
         List<MovieResponseDTO> toMovies = moviesClient.searchMovies(toRequest, token).getContent();
 
         int totalOscars = fromMovies.stream().mapToInt(MovieResponseDTO::getOscarsCount).sum();
 
-        for (MovieResponseDTO movie : fromMovies) {
-            moviesClient.updateMovieOscars(movie, 0, token);
-            movie.setOscarsCount(0);
-        }
+        fromMovies.forEach(m -> m.setOscarsCount(0));
+        moviesClient.updateMoviesBatch(fromMovies, token);
 
         Random random = new Random();
         for (int i = 0; i < totalOscars; i++) {
             if (toMovies.isEmpty()) break;
             MovieResponseDTO randomMovie = toMovies.get(random.nextInt(toMovies.size()));
-            int newCount = randomMovie.getOscarsCount() + 1;
-            moviesClient.updateMovieOscars(randomMovie, newCount, token);
-            randomMovie.setOscarsCount(newCount);
+            randomMovie.setOscarsCount(randomMovie.getOscarsCount() + 1);
         }
+        moviesClient.updateMoviesBatch(toMovies, token);
 
         RedistributeRewardsResponseDTO response = new RedistributeRewardsResponseDTO();
         response.setTransferredCount(totalOscars);
         return response;
     }
-
 }

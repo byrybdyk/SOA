@@ -9,6 +9,8 @@ import lombok.*;
 @Builder
 public class MovieCreateRequest {
 
+    private Long id;
+
     @NotBlank
     private String name;
 

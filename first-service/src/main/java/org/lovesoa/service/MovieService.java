@@ -2,6 +2,7 @@ package org.lovesoa.service;
 
 import lombok.RequiredArgsConstructor;
 import org.lovesoa.dtos.MovieCreateRequest;
+import org.lovesoa.exception.exceptions.MovieNotFoundException;
 import org.lovesoa.models.*;
 import org.lovesoa.repository.*;
 import org.springframework.stereotype.Service;
@@ -119,7 +120,7 @@ public class MovieService {
     @Transactional
     public void deleteMovie(Long id) {
         Movie movie = movieRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Movie not found"));
+                .orElseThrow(() -> new MovieNotFoundException(id));
 
         movieRepository.delete(movie);
     }

@@ -1,6 +1,7 @@
 package org.lovesoa.controller;
 
 import org.lovesoa.dtos.MovieSearchRequest;
+import org.lovesoa.exception.exceptions.BadRequestException;
 import org.lovesoa.models.Movie;
 import org.lovesoa.service.MovieSearchService;
 import org.springframework.data.domain.Page;
@@ -21,6 +22,9 @@ public class MovieSearchController {
     @PostMapping("/search")
     public Page<Movie> searchMovies(@RequestBody(required = false) MovieSearchRequest request) {
         if (request == null) request = new MovieSearchRequest();
+        if (request.getSize() < 1) {
+            throw new BadRequestException("size must be >= 1");
+        }
         return movieSearchService.searchMovies(
                 request.getFilters() != null ? request.getFilters() : Map.of(),
                 request.getSort(),

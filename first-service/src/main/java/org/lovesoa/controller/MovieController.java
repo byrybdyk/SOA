@@ -5,9 +5,12 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.lovesoa.dtos.MovieCreateRequest;
 import org.lovesoa.dtos.MovieResponseDTO;
+import org.lovesoa.exception.exceptions.BadRequestException;
+import org.lovesoa.exception.exceptions.MovieNotFoundException;
 import org.lovesoa.models.Movie;
 import org.lovesoa.repository.MovieRepository;
 import org.lovesoa.service.MovieService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,12 +28,18 @@ public class MovieController {
 
     @PostMapping
     public ResponseEntity<Movie> createMovie(@RequestBody @Valid MovieCreateRequest request) {
+        if (request.getId() < 1) {
+            throw new BadRequestException("id must be >= 1");
+        }
         Movie created = movieService.createMovie(request);
-        return ResponseEntity.ok(created);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<MovieResponseDTO> getMovieById(@PathVariable Long id) {
+        if (id < 1) {
+            throw new BadRequestException("id must be >= 1");
+        }
         return movieService.getMovieById(id)
                 .map(movie -> ResponseEntity.ok(
                         MovieResponseDTO.builder()
@@ -44,7 +53,7 @@ public class MovieController {
                                 .creationDate(movie.getCreationDate())
                                 .build()
                 ))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseThrow(() -> new MovieNotFoundException(id));
     }
 
     /**
@@ -59,7 +68,9 @@ public class MovieController {
             @PathVariable(required = false) Long id,
             @RequestBody Object body
     ) {
-        try {
+        if (id < 1) {
+            throw new BadRequestException("id must be >= 1");
+        }
             if (body instanceof List<?> list) {
                 // Пакетное обновление
                 List<MovieCreateRequest> requests = ((List<?>) list).stream()
@@ -78,27 +89,30 @@ public class MovieController {
                 Long movieId = id != null ? id : request.getId();
 
                 if (movieId == null)
-                    return ResponseEntity.badRequest().body("Movie id is required");
+                    throw new BadRequestException("Movie id is required");
 
                 Movie updated = movieService.updateMovie(movieId, request);
                 return ResponseEntity.ok(updated);
 
             } else {
-                return ResponseEntity.badRequest().body("Invalid request body format");
+                throw new BadRequestException("Invalid request body format");
             }
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error processing request: " + e.getMessage());
-        }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteMovie(@PathVariable Long id) {
+        if (id < 1) {
+            throw new BadRequestException("id must be >= 1");
+        }
         movieService.deleteMovie(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/count/by-operator-weight")
     public Map<String, Long> countByOperatorWeight(@RequestParam int weight) {
+        if (weight < 1) {
+            throw new BadRequestException("weight must be >= 1");
+        }
         long count = movieRepository.countByOperatorWeightGreaterThan(weight);
         return Map.of("count", count);
     }

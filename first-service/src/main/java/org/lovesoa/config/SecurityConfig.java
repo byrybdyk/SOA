@@ -1,6 +1,8 @@
     package org.lovesoa.config;
 
     import org.lovesoa.security.jwt.JwtAuthenticationFilter;
+    import org.lovesoa.security.utils.JwtAccessDeniedHandler;
+    import org.lovesoa.security.utils.JwtAuthenticationEntryPoint;
     import org.lovesoa.security.utils.UserDetailsServiceImpl;
     import org.springframework.beans.factory.annotation.Autowired;
     import org.springframework.context.annotation.Bean;
@@ -25,11 +27,21 @@
         @Autowired
         private JwtAuthenticationFilter jwtAuthenticationFilter;
 
+        @Autowired
+        private JwtAuthenticationEntryPoint authenticationEntryPoint;
+
+        @Autowired
+        private JwtAccessDeniedHandler accessDeniedHandler;
+
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
             http
                     .csrf(AbstractHttpConfigurer::disable)
                     .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                    .exceptionHandling(ex -> ex
+                            .authenticationEntryPoint(authenticationEntryPoint) // 401
+                            .accessDeniedHandler(accessDeniedHandler)           // 403
+                    )
                     .authorizeHttpRequests(authz -> authz
                             .requestMatchers("/auth/register", "/auth/login").permitAll()
                             .anyRequest().permitAll()

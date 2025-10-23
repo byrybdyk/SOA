@@ -68,9 +68,12 @@ public class MovieController {
             @PathVariable(required = false) Long id,
             @RequestBody Object body
     ) {
-        if (id < 1) {
-            throw new BadRequestException("id must be >= 1");
+        if(id != null){
+            if (id < 1) {
+                throw new BadRequestException("id must be >= 1");
+            }
         }
+
             if (body instanceof List<?> list) {
                 // Пакетное обновление
                 List<MovieCreateRequest> requests = ((List<?>) list).stream()

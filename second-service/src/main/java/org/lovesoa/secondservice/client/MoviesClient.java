@@ -9,6 +9,7 @@ import org.lovesoa.secondservice.dto.MovieCreateRequest;
 import org.lovesoa.secondservice.dto.movies.*;
 import org.lovesoa.secondservice.dto.pagable.PageableDTO;
 import org.lovesoa.secondservice.dto.pagable.SortDTO;
+import org.lovesoa.secondservice.exception.ExternalServiceException;
 
 import java.util.*;
 
@@ -35,9 +36,10 @@ public class MoviesClient {
         Response response = builder.post(Entity.json(request));
         String rawResponse = response.readEntity(String.class);
 
-        if (response.getStatus() != 200) {
-            throw new RuntimeException("Ошибка при запросе к первому сервису: " + response.getStatus());
+        if (response.getStatus() >= 400) {
+            throw new ExternalServiceException(response.getStatus(), "Ошибка первого сервиса", List.of(rawResponse));
         }
+
 
         try {
             Map<String, Object> pageMap = objectMapper.readValue(rawResponse, Map.class);
@@ -144,9 +146,9 @@ public class MoviesClient {
         }
 
         Response response = builder.put(Entity.json(requests));
-
-        if (response.getStatus() != 200) {
-            throw new RuntimeException("Ошибка пакетного обновления фильмов: " + response.getStatus());
+        String rawResponse = response.readEntity(String.class);
+        if (response.getStatus() >= 400) {
+            throw new ExternalServiceException(response.getStatus(), "Ошибка первого сервиса", List.of(rawResponse));
         }
     }
 

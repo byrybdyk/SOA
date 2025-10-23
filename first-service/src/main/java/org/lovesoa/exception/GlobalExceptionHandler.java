@@ -23,6 +23,7 @@ public class GlobalExceptionHandler {
                 "NOT_FOUND",
                 ex.getMessage()
         );
+        ex.printStackTrace();
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
@@ -32,6 +33,7 @@ public class GlobalExceptionHandler {
                 "CONFLICT",
                 ex.getMessage()
         );
+        ex.printStackTrace();
         return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
     }
 
@@ -42,6 +44,7 @@ public class GlobalExceptionHandler {
                 "Неверные параметры запроса",
                 List.of(ex.getMessage())
         );
+        ex.printStackTrace();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
@@ -68,7 +71,7 @@ public class GlobalExceptionHandler {
                 "Неверные параметры запроса",
                 List.of(detail)
         );
-
+        ex.printStackTrace();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
@@ -85,7 +88,7 @@ public class GlobalExceptionHandler {
                 "Некорректные данные запроса",
                 details
         );
-
+        ex.printStackTrace();
         return ResponseEntity
                 .status(HttpStatus.UNPROCESSABLE_ENTITY) // 422
                 .body(errorResponse);
@@ -97,6 +100,7 @@ public class GlobalExceptionHandler {
                 "INTERNAL_ERROR",
                 "Внутренняя ошибка сервера"
         );
+        ex.printStackTrace();
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }

@@ -1,0 +1,7 @@
+<glassfish-web-app>
+    <security-role-mapping>
+        <role-name>disabled</role-name>
+    </security-role-mapping>
+    <property name="securityEnabled" value="false"/>
+    <property name="allowCustomHeaders" value="true"/>
+</glassfish-web-app>

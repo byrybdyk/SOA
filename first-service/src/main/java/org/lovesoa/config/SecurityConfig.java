@@ -5,6 +5,9 @@
     import org.lovesoa.security.utils.JwtAuthenticationEntryPoint;
     import org.lovesoa.security.utils.UserDetailsServiceImpl;
     import org.springframework.beans.factory.annotation.Autowired;
+    import org.springframework.boot.web.servlet.DelegatingFilterProxyRegistrationBean;
+    import org.springframework.boot.web.servlet.DispatcherType;
+    import org.springframework.boot.web.servlet.FilterRegistrationBean;
     import org.springframework.context.annotation.Bean;
     import org.springframework.context.annotation.Configuration;
     import org.springframework.security.authentication.AuthenticationManager;
@@ -16,7 +19,10 @@
     import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
     import org.springframework.security.crypto.password.PasswordEncoder;
     import org.springframework.security.web.SecurityFilterChain;
+    import org.springframework.security.web.access.intercept.AuthorizationFilter;
     import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+    import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
+    import org.springframework.security.web.context.SecurityContextHolderFilter;
 
     @Configuration
     @EnableWebSecurity
@@ -37,17 +43,20 @@
         public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
             http
                     .csrf(AbstractHttpConfigurer::disable)
-                    .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                    .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                    .securityContext(sc -> sc.securityContextRepository(new org.springframework.security.web.context.RequestAttributeSecurityContextRepository()))
+                    // JWT ПОСЛЕ SecurityContextHolderFilter и ДО AuthorizationFilter:
+                    .addFilterAfter(jwtAuthenticationFilter, SecurityContextHolderFilter.class)
+                    .addFilterBefore(jwtAuthenticationFilter, AuthorizationFilter.class)
                     .exceptionHandling(ex -> ex
-                            .authenticationEntryPoint(authenticationEntryPoint) // 401
-                            .accessDeniedHandler(accessDeniedHandler)           // 403
+                            .authenticationEntryPoint(authenticationEntryPoint)
+                            .accessDeniedHandler(accessDeniedHandler)
                     )
-                    .authorizeHttpRequests(authz -> authz
+                    .authorizeHttpRequests(a -> a
                             .requestMatchers("/auth/register", "/auth/login").permitAll()
-                            .anyRequest().permitAll()
-//                            .anyRequest().authenticated()
-                    )
-                    .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+                            .anyRequest().authenticated()
+                    );
+
             return http.build();
         }
 
@@ -60,6 +69,14 @@
                     .passwordEncoder(passwordEncoder());
             return authenticationManagerBuilder.build();
         }
+
+        @Bean
+        public FilterRegistrationBean<JwtAuthenticationFilter> disableJwtFilterServletRegistration(JwtAuthenticationFilter f) {
+            FilterRegistrationBean<JwtAuthenticationFilter> reg = new FilterRegistrationBean<>(f);
+            reg.setEnabled(false);
+            return reg;
+        }
+
 
         @Bean
         public PasswordEncoder passwordEncoder() {

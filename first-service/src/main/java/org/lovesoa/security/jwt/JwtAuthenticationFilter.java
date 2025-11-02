@@ -23,6 +23,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     private final HandlerExceptionResolver handlerExceptionResolver;
     private final JwtService jwtService;
+    @Override protected boolean shouldNotFilterAsyncDispatch() { return false; }
+    @Override protected boolean shouldNotFilterErrorDispatch() { return false; }
+
     private final UserDetailsService userDetailsService;
 
     public JwtAuthenticationFilter(
@@ -42,6 +45,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         final String authHeader = request.getHeader("Authorization");
+        System.out.println("authHeader = " + authHeader);
         logger.info("Processing request: {}", request.getRequestURI());
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -66,13 +70,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 System.out.println("[JWT Filter] Roles: " + userDetails.getAuthorities());
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities()
-                    );
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                    var auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    var ctx = SecurityContextHolder.createEmptyContext();
+                    ctx.setAuthentication(auth);
+                    System.out.println("Before setContext: {}" + SecurityContextHolder.getContext().getAuthentication());
+
+                    SecurityContextHolder.setContext(ctx);
+
+                    System.out.println("After setContext: {}" + SecurityContextHolder.getContext().getAuthentication());
                 }
                 else {
                     System.out.println("[JWT Filter] Invalid token");

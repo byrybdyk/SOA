@@ -22,7 +22,7 @@ public class Movie {
     private String name;
 
     @NotNull
-    @OneToOne(cascade = CascadeType.ALL)
+    @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "coordinates_id", referencedColumnName = "id")
     private Coordinates coordinates;
 
@@ -43,7 +43,7 @@ public class Movie {
     private MpaaRating mpaaRating;
 
     @NotNull
-    @OneToOne(cascade = CascadeType.ALL)
+    @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "operator_id", referencedColumnName = "id")
     private Person operator;
 }

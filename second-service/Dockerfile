@@ -14,7 +14,6 @@ RUN gradle clean war --no-daemon
 # Stage 2: WildFly runtime
 FROM quay.io/wildfly/wildfly:latest
 USER root
-COPY keystore.jks /opt/jboss/wildfly/standalone/configuration/
 COPY standalone.xml /opt/jboss/wildfly/standalone/configuration/standalone.xml
 COPY --from=builder /app/build/libs/second-service.war /opt/jboss/wildfly/standalone/deployments/
 USER jboss

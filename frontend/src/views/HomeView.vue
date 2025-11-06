@@ -14,7 +14,39 @@
       </div>
     </header>
 
-    <!-- ФИЛЬТРЫ: конструктор условий -->
+    <!-- 🟦 Перераспределение наград -->
+    <div class="card transfer-card">
+      <div class="transfer-row">
+        <div class="transfer-title">Перераспределить «Оскары» между жанрами</div>
+        <div class="transfer-controls">
+          <label class="inline">
+            Из жанра:
+            <select class="input select" v-model="fromGenre">
+              <option disabled value="">Выберите жанр</option>
+              <option v-for="g in GENRES" :key="g" :value="g">{{ g }}</option>
+            </select>
+          </label>
+          <label class="inline">
+            В жанр:
+            <select class="input select" v-model="toGenre">
+              <option disabled value="">Выберите жанр</option>
+              <option v-for="g in GENRES" :key="g" :value="g">{{ g }}</option>
+            </select>
+          </label>
+
+          <button class="btn" :disabled="!canTransfer || transferLoading" @click="onTransfer">
+            {{ transferLoading ? 'Выполняю…' : 'Перераспределить' }}
+          </button>
+        </div>
+      </div>
+
+      <p v-if="transferResult" class="success">
+        Перераспределено «Оскаров»: <b>{{ transferResult }}</b>
+      </p>
+      <p v-if="transferError" class="error">{{ transferError }}</p>
+    </div>
+
+    <!-- ФИЛЬТРЫ -->
     <div class="filters card">
       <div class="filters-header">
         <strong>Фильтры</strong>
@@ -29,17 +61,14 @@
 
       <div class="filter-rows">
         <div class="filter-row" v-for="(f, idx) in filters" :key="f.id">
-          <!-- поле -->
           <select class="input select" v-model="f.field" @change="onFieldChange(f)">
             <option v-for="fld in FIELDS" :key="fld.key" :value="fld.key">{{ fld.label }}</option>
           </select>
 
-          <!-- оператор -->
           <select class="input select" v-model="f.op">
             <option v-for="op in opsFor(f.field)" :key="op" :value="op">{{ OP_LABELS[op] }}</option>
           </select>
 
-          <!-- значение -->
           <template v-if="inputKind(f) === 'enum-multi' && f.op === 'in'">
             <select class="input select" v-model="f.values" multiple>
               <option v-for="opt in enumOptionsFor(f.field)" :key="opt" :value="opt">
@@ -62,7 +91,6 @@
           </template>
 
           <template v-else>
-            <!-- text/number + поддержка IN через CSV -->
             <input
               class="input"
               :type="isNumberField(f.field) ? 'number' : 'text'"
@@ -73,10 +101,7 @@
 
           <button class="link danger" @click="removeFilter(idx)">Удалить</button>
         </div>
-        <p class="hint">
-          Поддерживаются операторы: =, ≠, &gt;, ≥, &lt;, ≤, IN. Для <b>IN</b> у не-справочников
-          используйте значения через запятую.
-        </p>
+        <p class="hint">Поддерживаются операторы: =, ≠, &gt;, ≥, &lt;, ≤, IN.</p>
       </div>
     </div>
 
@@ -123,8 +148,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { searchMovies } from '../api/movies'
+import { redistributeRewards } from '../api/genres'
 
-// ---- Колонки таблицы (все поля, включая вложенные)
+// ---- Табличные колонки (все поля, в т.ч. вложенные)
 const COLUMNS = [
   { title: 'ID', key: 'id' },
   { title: 'Название', key: 'name' },
@@ -145,10 +171,11 @@ const COLUMNS = [
   { title: 'Loc.Z', key: 'operator.location.z' },
 ]
 
-// ---- Словарь полей для фильтрации: тип и опции для enum
+// ---- Справочники
 const GENRES = ['DRAMA', 'FANTASY', 'THRILLER']
 const MPAA = ['G', 'PG', 'PG_13', 'R', 'NC_17']
 
+// ---- Фильтрация
 const FIELDS = [
   { key: 'id', label: 'ID', type: 'number' },
   { key: 'name', label: 'Название', type: 'string' },
@@ -166,19 +193,18 @@ const FIELDS = [
   { key: 'operator.location.z', label: 'Локация Z', type: 'number' },
 ]
 
-// ---- Операторы и подписи
 const OP_LABELS = { eq: 'равно', ne: 'не равно', gt: '>', gte: '≥', lt: '<', lte: '≤', in: 'IN' }
 const OPS_BY_TYPE = {
   string: ['eq', 'ne', 'in'],
   enum: ['eq', 'ne', 'in'],
   number: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'in'],
-  date: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'in'], // IN для дат — список дат
+  date: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'in'],
 }
 
-// ---- Состояние таблицы
-const page = ref(0) // 0-based
+// ---- Таблица: состояние
+const page = ref(0)
 const size = ref(20)
-const sort = ref('id:desc') // поддерживает nested: "operator.name:desc"
+const sort = ref('id:desc')
 const loading = ref(false)
 const error = ref('')
 const rows = ref([])
@@ -211,19 +237,17 @@ function goTo(p) {
   load()
 }
 
-// ---- Конструктор фильтров
+// ---- Фильтры-конструктор
 let nextId = 1
-const filters = ref([]) // [{id, field, op, value?/values?}]
-
+const filters = ref([])
 function addFilter() {
-  // по умолчанию — первое поле и первый валидный оператор
   const fld = FIELDS[0]
   filters.value.push({
     id: nextId++,
     field: fld.key,
     op: OPS_BY_TYPE[fld.type][0],
     value: '',
-    values: [], // для enum IN
+    values: [],
   })
 }
 function removeFilter(idx) {
@@ -238,7 +262,6 @@ function applyFilters() {
   page.value = 0
   load()
 }
-
 function fieldMeta(fieldKey) {
   return FIELDS.find((f) => f.key === fieldKey) || { type: 'string' }
 }
@@ -254,7 +277,7 @@ function isNumberField(fieldKey) {
 function inputKind(f) {
   const meta = fieldMeta(f.field)
   if (meta.type === 'enum') return f.op === 'in' ? 'enum-multi' : 'enum'
-  return meta.type // 'string' | 'number' | 'date'
+  return meta.type
 }
 function onFieldChange(f) {
   const allowed = opsFor(f.field)
@@ -263,7 +286,7 @@ function onFieldChange(f) {
   f.values = []
 }
 
-// ---- Вспомогательные: чтение вложенных значений и формат
+// ---- helpers
 function getVal(obj, path) {
   return path.split('.').reduce((acc, k) => (acc != null ? acc[k] : undefined), obj)
 }
@@ -271,17 +294,13 @@ function formatValue(v) {
   if (v === null || v === undefined) return '—'
   return v
 }
-
-// ---- Формирование тела запроса
 function parseCsv(val, fieldKey) {
-  // из "a, b, c" -> массив с приведением типов, где нужно
   const parts = String(val)
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean)
   const meta = fieldMeta(fieldKey)
-  if (meta.type === 'number') return parts.map((n) => Number(n))
-  return parts // string/date оставляем строкой (дата — 'YYYY-MM-DD')
+  return meta.type === 'number' ? parts.map(Number) : parts
 }
 
 function buildFiltersObject() {
@@ -290,23 +309,26 @@ function buildFiltersObject() {
     const key = `${f.field}[${f.op}]`
     const meta = fieldMeta(f.field)
     let val
-
     if (f.op === 'in') {
-      if (meta.type === 'enum') {
-        val = Array.isArray(f.values) ? f.values : []
-      } else {
-        val = Array.isArray(f.value) ? f.value : parseCsv(f.value, f.field)
-      }
+      val =
+        meta.type === 'enum'
+          ? Array.isArray(f.values)
+            ? f.values
+            : []
+          : Array.isArray(f.value)
+            ? f.value
+            : parseCsv(f.value, f.field)
     } else {
-      if (meta.type === 'number') val = f.value === '' || f.value === null ? null : Number(f.value)
-      else val = f.value // string/date/enum — строка
+      val =
+        meta.type === 'number'
+          ? f.value === '' || f.value === null
+            ? null
+            : Number(f.value)
+          : f.value
     }
-
-    // пропускаем пустые значения
     const isEmpty =
       (f.op === 'in' && Array.isArray(val) && val.length === 0) ||
-      (f.op !== 'in' && (val === '' || val === null || val === undefined))
-
+      (f.op !== 'in' && (val === '' || val == null))
     if (!isEmpty) out[key] = val
   }
   return out
@@ -315,13 +337,12 @@ function buildFiltersObject() {
 function buildBody() {
   return {
     filters: buildFiltersObject(),
-    sort: [sort.value], // ["field:dir"], nested поддерживается
+    sort: [sort.value],
     page: page.value,
     size: size.value,
   }
 }
 
-// ---- Загрузка
 async function load() {
   loading.value = true
   error.value = ''
@@ -340,10 +361,36 @@ async function load() {
   }
 }
 
-onMounted(() => {
-  // стартовое условие: пусто; при желании можно добавить дефолтный фильтр
-  load()
-})
+// 🟦 Перераспределение: состояние и логика
+const fromGenre = ref('')
+const toGenre = ref('')
+const transferLoading = ref(false)
+const transferResult = ref(0)
+const transferError = ref('')
+
+const canTransfer = computed(
+  () => !!fromGenre.value && !!toGenre.value && fromGenre.value !== toGenre.value,
+)
+
+async function onTransfer() {
+  if (!canTransfer.value) return
+  transferError.value = ''
+  transferResult.value = 0
+  transferLoading.value = true
+  try {
+    const res = await redistributeRewards(fromGenre.value, toGenre.value)
+    // a) показать результат
+    transferResult.value = res?.transferredCount ?? 0
+    // б) обновить таблицу, НЕ сбрасывая фильтры/сортировку/страницу
+    await load()
+  } catch (e) {
+    transferError.value = e?.response?.data?.message || 'Не удалось перераспределить награды'
+  } finally {
+    transferLoading.value = false
+  }
+}
+
+onMounted(load)
 </script>
 
 <style scoped>
@@ -380,6 +427,31 @@ onMounted(() => {
   border-radius: 14px;
   box-shadow: 0 8px 24px rgba(20, 60, 200, 0.05);
 }
+.transfer-card {
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.transfer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.transfer-title {
+  font-weight: 700;
+}
+.transfer-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.inline {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
 .filters {
   padding: 12px;
   margin-bottom: 12px;
@@ -483,11 +555,15 @@ onMounted(() => {
   padding: 12px;
   color: #c62828;
 }
+.success {
+  padding: 8px 0 0;
+  color: #087f23;
+}
+
 .empty {
   text-align: center;
   color: #5a77c7;
 }
-
 .pager {
   display: flex;
   align-items: center;

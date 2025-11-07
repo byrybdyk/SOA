@@ -53,9 +53,7 @@
                     .csrf(AbstractHttpConfigurer::disable)
                     .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     .securityContext(sc -> sc.securityContextRepository(new org.springframework.security.web.context.RequestAttributeSecurityContextRepository()))
-                    // JWT ПОСЛЕ SecurityContextHolderFilter и ДО AuthorizationFilter:
-                    .addFilterAfter(jwtAuthenticationFilter, SecurityContextHolderFilter.class)
-                    .addFilterBefore(jwtAuthenticationFilter, AuthorizationFilter.class)
+                    .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                     .exceptionHandling(ex -> ex
                             .authenticationEntryPoint(authenticationEntryPoint)
                             .accessDeniedHandler(accessDeniedHandler)

@@ -30,7 +30,7 @@ public class GlobalCorsFilter implements ContainerRequestFilter, ContainerRespon
             URI u = new URI(origin);
             String scheme = u.getScheme();
             String host   = u.getHost();
-            return "http".equalsIgnoreCase(scheme)
+            return "https".equalsIgnoreCase(scheme)
                     && ("localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host));
         } catch (URISyntaxException e) {
             return false;

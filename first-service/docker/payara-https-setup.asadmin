@@ -1,0 +1,8 @@
+set configs.config.server-config.network-config.network-listeners.network-listener.http-listener-2.address=0.0.0.0
+set configs.config.server-config.network-config.network-listeners.network-listener.http-listener-2.port=8443
+
+set configs.config.server-config.network-config.protocols.protocol.http-listener-2.security-enabled=true
+set configs.config.server-config.network-config.protocols.protocol.http-listener-2.ssl.key-store=/opt/certs/first-service.jks
+set configs.config.server-config.network-config.protocols.protocol.http-listener-2.ssl.key-store-type=JKS
+set configs.config.server-config.network-config.protocols.protocol.http-listener-2.ssl.key-store-password=123456
+set configs.config.server-config.network-config.protocols.protocol.http-listener-2.ssl.cert-nickname=server

@@ -96,7 +96,7 @@
         CorsConfigurationSource corsConfigurationSource() {
             CorsConfiguration cfg = new CorsConfiguration();
             // Vite по умолчанию на 5173
-            cfg.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
+            cfg.setAllowedOriginPatterns(List.of("https://localhost:*", "https://127.0.0.1:*"));
             cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
             cfg.setAllowedHeaders(List.of("Authorization","Content-Type","Accept","X-Requested-With"));
             cfg.setExposedHeaders(List.of("Authorization")); // если нужно

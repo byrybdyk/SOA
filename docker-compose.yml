@@ -62,6 +62,18 @@ services:
       options: { max-size: "10m", max-file: "3" }
     restart: always
 
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: frontend
+    ports:
+      - "8445:443"
+    depends_on:
+      - first-service
+      - second-service
+    restart: always
+
 volumes:
   postgres-data:
   gradle-cache:

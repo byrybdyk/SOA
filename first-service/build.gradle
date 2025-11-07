@@ -45,3 +45,11 @@ dependencies {
 tasks.withType(Test) {
     enabled = false
 }
+
+tasks.named('bootWar') {
+    archiveFileName.set("first-service.war")  // итоговое имя артефакта
+}
+
+war {
+    archiveFileName.set("first-service.war")
+}

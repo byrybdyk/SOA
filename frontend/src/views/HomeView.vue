@@ -216,7 +216,7 @@
               <input
                 v-model.number="editForm.oscarsCount"
                 type="number"
-                min="1"
+                min="0"
                 step="1"
                 :class="{
                   invalid: !Number.isInteger(editForm.oscarsCount) || editForm.oscarsCount <= 0,

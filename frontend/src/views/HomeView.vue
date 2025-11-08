@@ -22,14 +22,18 @@
             Из жанра:
             <select class="input select" v-model="fromGenre">
               <option disabled value="">Выберите жанр</option>
-              <option v-for="g in GENRES" :key="g" :value="g">{{ g }}</option>
+              <option v-for="g in GENRE_OPTIONS" :key="g.value" :value="g.value">
+                {{ g.label }}
+              </option>
             </select>
           </label>
           <label class="inline">
             В жанр:
             <select class="input select" v-model="toGenre">
               <option disabled value="">Выберите жанр</option>
-              <option v-for="g in GENRES" :key="g" :value="g">{{ g }}</option>
+              <option v-for="g in GENRE_OPTIONS" :key="g.value" :value="g.value">
+                {{ g.label }}
+              </option>
             </select>
           </label>
 
@@ -53,7 +57,7 @@
           <button class="link danger" @click="clearFilters" :disabled="filters.length === 0">
             Очистить
           </button>
-          <button class="btn" @click="applyFilters">Применить</button>
+          <button class="btn" @click="applyFilters" :disabled="!areFiltersValid">Применить</button>
         </div>
       </div>
 
@@ -70,7 +74,7 @@
           <template v-if="inputKind(f) === 'enum-multi' && f.op === 'in'">
             <select class="input select" v-model="f.values" multiple>
               <option v-for="opt in enumOptionsFor(f.field)" :key="opt" :value="opt">
-                {{ opt }}
+                {{ f.field === 'genre' ? genreLabel(opt) : opt }}
               </option>
             </select>
           </template>
@@ -79,9 +83,34 @@
             <select class="input select" v-model="f.value">
               <option value="" disabled>Выберите…</option>
               <option v-for="opt in enumOptionsFor(f.field)" :key="opt" :value="opt">
-                {{ opt }}
+                {{ f.field === 'genre' ? genreLabel(opt) : opt }}
               </option>
             </select>
+          </template>
+          <template v-else-if="isNumberField(f.field)">
+            <template v-if="f.op === 'in'">
+              <input
+                class="input"
+                type="text"
+                :value="typeof f.value === 'string' ? f.value : ''"
+                :placeholder="
+                  'Через запятую: ' + (isFloatField(f.field) ? '1.23, 4.56' : '1, 2, 3')
+                "
+                @input="onFilterNumberCsvInput($event, f)"
+                :class="{ invalid: !!f._invalid }"
+              />
+            </template>
+            <template v-else>
+              <input
+                class="input"
+                type="text"
+                :value="f.value"
+                :inputmode="isFloatField(f.field) ? 'decimal' : 'numeric'"
+                @input="onFilterNumberInput($event, f)"
+                :placeholder="'Значение'"
+                :class="{ invalid: !!f._invalid }"
+              />
+            </template>
           </template>
 
           <template v-else-if="inputKind(f) === 'date'">
@@ -91,7 +120,7 @@
           <template v-else>
             <input
               class="input"
-              :type="isNumberField(f.field) ? 'number' : 'text'"
+              :type="isNumberField(f.field) ? 'text' : 'text'"
               v-model="f.value"
               :placeholder="f.op === 'in' ? 'Через запятую: a,b,c' : 'Значение'"
             />
@@ -124,7 +153,7 @@
         <tbody>
           <tr v-for="m in rows" :key="m.id">
             <td v-for="col in COLUMNS" :key="col.key">
-              {{ formatValue(getVal(m, col.key)) }}
+              {{ formatValue(getVal(m, col.key), col.key) }}
             </td>
 
             <td class="actions">
@@ -183,7 +212,10 @@
             <label>
               Координата X
               <input
-                v-model.number="editForm.coordinates.x"
+                type="text"
+                inputmode="numeric"
+                :value="editForm.coordinates.x"
+                @input="(e) => onIntegerInput(e, 'coordinates.x')"
                 :class="{
                   invalid:
                     !Number.isInteger(editForm.coordinates.x) ||
@@ -195,9 +227,11 @@
             <label>
               Координата Y
               <input
-                v-model.number="editForm.coordinates.y"
-                type="number"
-                step="0.01"
+                class="input"
+                type="text"
+                inputmode="decimal"
+                :value="editForm.coordinates.y"
+                @input="onCoordYInput"
                 :class="{
                   invalid:
                     normalizeNumber(editForm.coordinates.y) === false ||
@@ -211,11 +245,10 @@
             <label>
               Оскаров
               <input
-                v-model.number="editForm.oscarsCount"
-                type="number"
-                min="0"
-                :max="INT_MAX_MINUS_ONE"
-                step="1"
+                type="text"
+                inputmode="numeric"
+                :value="editForm.oscarsCount"
+                @input="(e) => onIntegerInput(e, 'oscarsCount')"
                 :class="{
                   invalid:
                     !Number.isInteger(editForm.oscarsCount) ||
@@ -227,7 +260,9 @@
             <label>
               Жанр
               <select v-model="editForm.genre">
-                <option v-for="g in GENRES" :key="g" :value="g">{{ g }}</option>
+                <option v-for="g in GENRE_OPTIONS" :key="g.value" :value="g.value">
+                  {{ g.label }}
+                </option>
               </select>
             </label>
           </div>
@@ -255,27 +290,26 @@
               <label>
                 Рост
                 <input
-                  v-model.number="editForm.operator.height"
-                  type="number"
-                  min="1"
-                  :max="INT_MAX_MINUS_ONE"
-                  step="1"
+                  class="input"
+                  type="text"
+                  inputmode="decimal"
+                  :value="editForm.operator.height"
+                  @input="onHeightInput"
                   :class="{
                     invalid:
-                      !Number.isInteger(editForm.operator.height) ||
-                      editForm.operator.height <= 0 ||
-                      !inRangeNonNegativeIntMinusOne(editForm.operator.height),
+                      normalizeNumber(editForm.operator.height) === false ||
+                      !inRangeFloatMinusOne(editForm.operator.height),
                   }"
                 />
               </label>
               <label>
                 Вес
                 <input
-                  v-model.number="editForm.operator.weight"
-                  type="number"
-                  min="1"
-                  :max="INT_MAX_MINUS_ONE"
-                  step="1"
+                  type="text"
+                  inputmode="numeric"
+                  :value="editForm.operator.weight"
+                  @input="(e) => onIntegerInput(e, 'operator.weight')"
+                  class="input"
                   :class="{
                     invalid:
                       !Number.isInteger(editForm.operator.weight) ||
@@ -289,10 +323,11 @@
               <label>
                 Локация X
                 <input
-                  v-model.number="editForm.operator.location.x"
-                  type="number"
-                  :min="INT_MIN"
-                  :max="INT_MAX_MINUS_ONE"
+                  type="text"
+                  inputmode="numeric"
+                  :value="editForm.operator.location.x"
+                  @input="(e) => onIntegerInput(e, 'operator.location.x')"
+                  class="input"
                   :class="{
                     invalid:
                       normalizeNumber(editForm.operator.location.x) === false ||
@@ -301,13 +336,15 @@
                   }"
                 />
               </label>
+
               <label>
                 Локация Y
                 <input
-                  v-model.number="editForm.operator.location.y"
-                  type="number"
-                  :min="INT_MIN"
-                  :max="INT_MAX_MINUS_ONE"
+                  type="text"
+                  inputmode="numeric"
+                  :value="editForm.operator.location.y"
+                  @input="(e) => onIntegerInput(e, 'operator.location.y')"
+                  class="input"
                   :class="{
                     invalid:
                       normalizeNumber(editForm.operator.location.y) === false ||
@@ -316,13 +353,15 @@
                   }"
                 />
               </label>
+
               <label>
                 Локация Z
                 <input
-                  v-model.number="editForm.operator.location.z"
-                  type="number"
-                  :min="INT_MIN"
-                  :max="INT_MAX_MINUS_ONE"
+                  type="text"
+                  inputmode="numeric"
+                  :value="editForm.operator.location.z"
+                  @input="(e) => onIntegerInput(e, 'operator.location.z')"
+                  class="input"
                   :class="{
                     invalid:
                       normalizeNumber(editForm.operator.location.z) === false ||
@@ -367,26 +406,36 @@ const COLUMNS = [
   { title: 'Дата', key: 'creationDate' },
   { title: 'Оскары', key: 'oscarsCount' },
   { title: 'Жанр', key: 'genre' },
-  { title: 'MPAA', key: 'mpaaRating' },
+  { title: 'Возраст', key: 'mpaaRating' },
   // { title: 'Coord.ID', key: 'coordinates.id' },
-  { title: 'Coord.X', key: 'coordinates.x' },
-  { title: 'Coord.Y', key: 'coordinates.y' },
+  { title: 'Х', key: 'coordinates.x' },
+  { title: 'Y', key: 'coordinates.y' },
   // { title: 'Oper.ID', key: 'operator.id' },
-  { title: 'Oper.Name', key: 'operator.name' },
-  { title: 'Oper.Height', key: 'operator.height' },
-  { title: 'Oper.Weight', key: 'operator.weight' },
+  { title: 'Имя режиссера', key: 'operator.name' },
+  { title: 'Рост режиссера', key: 'operator.height' },
+  { title: 'Вест реижиссера', key: 'operator.weight' },
   // { title: 'Loc.ID', key: 'operator.location.id' },
-  { title: 'Loc.X', key: 'operator.location.x' },
-  { title: 'Loc.Y', key: 'operator.location.y' },
-  { title: 'Loc.Z', key: 'operator.location.z' },
+  { title: 'Локация Х', key: 'operator.location.x' },
+  { title: 'Локация Y', key: 'operator.location.y' },
+  { title: 'Локация Z', key: 'operator.location.z' },
 ]
 
-const GENRES = ['DRAMA', 'FANTASY', 'THRILLER']
+const GENRES = ['Драма', 'Фэнтези', 'Триллер']
 const MPAA = ['PG', 'R', 'NC_17']
 const INT_MAX = 2147483647
 const INT_MAX_MINUS_ONE = INT_MAX - 1 // 2147483646
 const INT_MIN = -2147483648
+const GENRE_LABELS = {
+  DRAMA: 'Драма',
+  FANTASY: 'Фэнтези',
+  THRILLER: 'Триллер',
+}
 
+const GENRE_OPTIONS = Object.entries(GENRE_LABELS).map(([value, label]) => ({ value, label }))
+
+function genreLabel(v) {
+  return GENRE_LABELS[v] ?? v
+}
 function inRange(n, min, max) {
   if (n === null || n === undefined || Number.isNaN(n)) return false
   return n >= min && n <= max
@@ -395,7 +444,7 @@ function inRangeIntMinusOne(n) {
   return inRange(n, INT_MIN, INT_MAX_MINUS_ONE)
 }
 function inRangeNonNegativeIntMinusOne(n) {
-  return inRange(n, 1, INT_MAX_MINUS_ONE)
+  return inRange(n, 0, INT_MAX_MINUS_ONE)
 }
 function inRangeFloatMinusOne(n) {
   return inRange(n, -Number(INT_MAX_MINUS_ONE), Number(INT_MAX_MINUS_ONE))
@@ -424,7 +473,7 @@ const FIELDS = [
   { key: 'coordinates.y', label: 'Coordinates Y', type: 'number' },
   { key: 'creationDate', label: 'Дата создания', type: 'date' },
   { key: 'oscarsCount', label: 'Оскары', type: 'number' },
-  { key: 'genre', label: 'Жанр', type: 'enum', options: GENRES },
+  { key: 'genre', label: 'Жанр', type: 'enum', options: Object.keys(GENRE_LABELS) },
   { key: 'mpaaRating', label: 'MPAA', type: 'enum', options: MPAA },
   { key: 'operator.name', label: 'Оператор — имя', type: 'string' },
   { key: 'operator.height', label: 'Оператор — рост', type: 'number' },
@@ -485,10 +534,10 @@ const isFormValid = computed(() => {
   if (op) {
     if (!op.name || !op.name.trim()) return false
 
-    if (!Number.isInteger(op.height) || op.height <= 0) return false
+    if (op.height < 0) return false
     if (!inRangeNonNegativeIntMinusOne(op.height)) return false
 
-    if (!Number.isInteger(op.weight) || op.weight <= 0) return false
+    if (!Number.isInteger(op.weight) || op.weight < 0) return false
     if (!inRangeNonNegativeIntMinusOne(op.weight)) return false
 
     if (op.location) {
@@ -506,6 +555,94 @@ const isFormValid = computed(() => {
   }
   return true
 })
+
+function trimDecimalWithCaret(e, max = 6) {
+  const el = e.target
+  let start = el.selectionStart ?? el.value.length
+  let end = el.selectionEnd ?? el.value.length
+  let v = String(el.value ?? '')
+
+  // Оставляем цифры, точку/запятую и один минус
+  v = v.replace(/[^\d.,-]/g, '')
+  // Минус только в начале
+  v = v.replace(/(?!^)-/g, '')
+
+  // Первый разделитель дроби — точка или запятая
+  const firstSepMatch = /[.,]/.exec(v)
+  const sepIndex = firstSepMatch ? firstSepMatch.index : -1
+
+  if (sepIndex !== -1) {
+    // Удаляем все последующие разделители после первого
+    const before = v.slice(0, sepIndex + 1)
+    const afterOrig = v.slice(sepIndex + 1)
+    const after = afterOrig.replace(/[.,]/g, '') // только цифры после разделителя
+
+    // Корректируем позицию каретки, если что-то удалили после разделителя
+    const removedSeps = (afterOrig.match(/[.,]/g) || []).length
+    if (removedSeps && start > sepIndex) {
+      start -= Math.min(removedSeps, start - (sepIndex + 1))
+      end -= Math.min(removedSeps, end - (sepIndex + 1))
+    }
+
+    // Режем дробную часть до max
+    let frac = after
+    if (after.length > max) {
+      const cut = after.length - max
+      frac = after.slice(0, max)
+
+      // Если каретка была внутри «срезанной» области — сдвигаем
+      if (start > sepIndex + 1 + max) start -= cut
+      if (end > sepIndex + 1 + max) end -= cut
+    }
+
+    v = before + frac
+  }
+
+  // Обновляем DOM только если строка изменилась (меньше мерцаний и прыжков)
+  if (el.value !== v) {
+    el.value = v
+    // Вернуть каретку после перерисовки
+    requestAnimationFrame(() => el.setSelectionRange(start, end))
+  }
+
+  // В модель кладём число (или пустую строку, если невалидно)
+  const n = Number(v.replace(',', '.'))
+  return Number.isFinite(n) ? n : ''
+}
+
+function formatDate(val) {
+  if (!val) return '—'
+  // поддержка ISO-строки или Date
+  const d = new Date(val)
+  if (isNaN(d.getTime())) return val // если не дата — вернуть как есть
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  return `${dd}.${mm}.${yyyy}`
+}
+
+function onIntegerInput(e, path) {
+  const el = e.target
+
+  // если пользователь ввёл точку/запятую — сразу подсветим и не трогаем модель
+  if (/[.,]/.test(el.value)) {
+    el.classList.add('invalid')
+    return
+  }
+
+  // жёстко клампим визуально под int32 диапазон
+  const clampedStr = clampIntStringInPlace(el)
+  const n = Number(clampedStr)
+
+  // обновляем реактивную модель
+  const keys = path.split('.')
+  let obj = editForm.value
+  for (let i = 0; i < keys.length - 1; i++) obj = obj[keys[i]]
+  obj[keys[keys.length - 1]] = Number.isFinite(n) ? n : ''
+
+  // убираем ручную подсветку, дальнейшая валидация — через ваши правила
+  el.classList.remove('invalid')
+}
 
 function makeEmptyForm() {
   return {
@@ -568,14 +705,43 @@ function cancelEdit() {
 }
 function normalizeNumber(value) {
   if (value === null || value === undefined || value === '') return false
-
   const str = String(value).trim().replace(',', '.')
   const num = Number(str)
   if (isNaN(num)) return false
-
   const parts = str.split('.')
   if (parts.length === 1) return true
-  return parts[1].length <= 5
+  return parts[1].length <= 6
+}
+
+function trimDecimalsInEvent(e, max = 6) {
+  // нормализуем разделитель
+  let v = String(e.target.value ?? '').replace(',', '.')
+  // допускаем только один минус в начале и одну точку
+  // (мягко: не вычищаем всё, а только режем дробную часть)
+  const dotIdx = v.indexOf('.')
+  if (dotIdx !== -1) {
+    const intPart = v.slice(0, dotIdx)
+    const fracPart = v.slice(dotIdx + 1)
+    if (fracPart.length > max) {
+      v = intPart + '.' + fracPart.slice(0, max)
+    }
+  }
+  e.target.value = v // визуально «съедаем» лишние символы сразу
+
+  // Возвращаем значение для модели:
+  // если пусто/только "-" или ".", оставим пустую строку — пусть форма помечается как невалидная
+  if (v === '' || v === '-' || v === '.' || v === '-.') return ''
+  const n = Number(v)
+  return Number.isNaN(n) ? '' : n
+}
+
+function onCoordYInput(e) {
+  const n = trimDecimalsInEvent(e, 6)
+  editForm.value.coordinates.y = n
+}
+function onHeightInput(e) {
+  const n = trimDecimalsInEvent(e, 6)
+  editForm.value.operator.height = n
 }
 
 async function saveEdit() {
@@ -676,10 +842,147 @@ function onFieldChange(f) {
 function getVal(obj, path) {
   return path.split('.').reduce((acc, k) => (acc != null ? acc[k] : undefined), obj)
 }
-function formatValue(v) {
+function formatValue(v, key) {
   if (v === null || v === undefined) return '—'
+  if (key === 'genre') return genreLabel(v)
+  if (key === 'creationDate') return formatDate(v)
   return v
 }
+
+function isFloatField(fieldKey) {
+  // у нас во входной форме флоатами были coordinates.y и operator.height
+  return fieldKey === 'coordinates.y' || fieldKey === 'operator.height'
+}
+function isIntField(fieldKey) {
+  return fieldMeta(fieldKey).type === 'number' && !isFloatField(fieldKey)
+}
+
+function clampIntStringInPlace(el) {
+  // допустимые границы как строки без знака
+  const MAX_POS_STR = String(INT_MAX_MINUS_ONE) // "2147483646"
+  const MAX_NEG_STR = String(Math.abs(INT_MIN)) // "2147483648"
+
+  // сырое значение
+  let v = String(el.value ?? '')
+
+  // разрешаем только цифры и один минус в начале
+  v = v.replace(/[^\d-]/g, '').replace(/(?!^)-/g, '')
+
+  const neg = v.startsWith('-')
+  let digits = v.replace(/^-/, '')
+
+  // убираем лидирующие нули (оставим один ноль, если все нули)
+  digits = digits.replace(/^0+(?=\d)/, '')
+  if (digits === '') digits = '0'
+
+  // ограничиваем по длине и лексикографически
+  const limit = neg ? MAX_NEG_STR : MAX_POS_STR
+
+  if (digits.length > limit.length) {
+    digits = limit
+  } else if (digits.length === limit.length && digits > limit) {
+    digits = limit
+  }
+
+  const out = (neg ? '-' : '') + digits
+
+  if (el.value !== out) {
+    el.value = out
+  }
+  return out
+}
+
+function clampInt(n) {
+  return Math.min(INT_MAX_MINUS_ONE, Math.max(INT_MIN, n))
+}
+function clampFloat(n) {
+  const lim = Number(INT_MAX_MINUS_ONE)
+  return Math.min(lim, Math.max(-lim, n))
+}
+function trimFloatStringKeepCaret(el, maxFrac = 6) {
+  // не усложняем каретку в фильтрах: просто подрезаем
+  let v = String(el.value ?? '')
+    .replace(',', '.')
+    .replace(/[^\d\.\-]/g, '')
+  v = v.replace(/(?!^)-/g, '') // минус только в начале
+  v = v.replace(/\.(?=.*\.)/g, '') // только одна точка
+  const dot = v.indexOf('.')
+  if (dot !== -1)
+    v =
+      v.slice(0, dot + 1) +
+      v
+        .slice(dot + 1)
+        .replace(/\D/g, '')
+        .slice(0, maxFrac)
+  el.value = v
+  return v
+}
+
+// одиночное значение для number-поля
+function onFilterNumberInput(e, f) {
+  const meta = fieldMeta(f.field)
+  if (meta.type !== 'number') return
+
+  if (isFloatField(f.field)) {
+    const str = trimFloatStringKeepCaret(e.target, 6)
+    const n = Number(str)
+    const valid = str !== '' && Number.isFinite(n)
+    f._invalid = !valid || !inRangeFloatMinusOne(n)
+    f.value = valid ? clampFloat(n) : str // хранить число или исходную строку, если невалидно
+  } else {
+    // int
+    let v = String(e.target.value ?? '')
+    // если есть запятая/точка — сразу невалидно и не пишем в модель
+    if (/[.,]/.test(v)) {
+      f._invalid = true
+      return
+    }
+    // оставляем цифры и опциональный ведущий минус
+    v = v.replace(/[^\d-]/g, '').replace(/(?!^)-/g, '')
+    e.target.value = v
+    const n = Number(v)
+    const isNum = v !== '' && Number.isFinite(n)
+    const clamped = isNum ? clampInt(n) : n
+    f._invalid = !isNum || !inRangeIntMinusOne(clamped)
+    f.value = isNum ? clamped : v
+  }
+}
+
+// CSV-режим для number-поля (op === 'in')
+function onFilterNumberCsvInput(e, f) {
+  const raw = String(e.target.value ?? '')
+  // не трогаем визуально, но валидируем каждую часть
+  const parts = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+
+  let invalid = false
+  const nums = parts.map((p) => {
+    if (isFloatField(f.field)) {
+      // флоат: до 6 знаков
+      const cleaned = p.replace(',', '.')
+      const dot = cleaned.indexOf('.')
+      const limited =
+        dot === -1 ? cleaned : cleaned.slice(0, dot + 1) + cleaned.slice(dot + 1).slice(0, 6)
+      const n = Number(limited)
+      if (limited === '' || !Number.isFinite(n) || !inRangeFloatMinusOne(n)) invalid = true
+      return clampFloat(n)
+    } else {
+      // инт: запрещаем , .
+      if (/[.,]/.test(p)) invalid = true
+      const cleaned = p.replace(/[^\d-]/g, '').replace(/(?!^)-/g, '')
+      const n = Number(cleaned)
+      if (cleaned === '' || !Number.isFinite(n) || !inRangeIntMinusOne(n)) invalid = true
+      return clampInt(n)
+    }
+  })
+
+  f._invalid = invalid
+  // храним строку для UX, но при отправке (buildFiltersObject) превратим в числа
+  f.value = raw
+}
+
 function parseCsv(val, fieldKey) {
   const parts = String(val)
     .split(',')
@@ -701,15 +1004,24 @@ function buildFiltersObject() {
           ? Array.isArray(f.values)
             ? f.values
             : []
-          : Array.isArray(f.value)
-            ? f.value
-            : parseCsv(f.value, f.field)
+          : // number CSV -> массив чисел с нужной интерпретацией
+            String(f.value ?? '')
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .map((x) =>
+                isFloatField(f.field)
+                  ? clampFloat(Number(x.replace(',', '.')))
+                  : clampInt(Number(x)),
+              )
     } else {
       val =
         meta.type === 'number'
           ? f.value === '' || f.value === null
             ? null
-            : Number(f.value)
+            : isFloatField(f.field)
+              ? clampFloat(Number(f.value))
+              : clampInt(Number(f.value))
           : f.value
     }
     const isEmpty =
@@ -756,6 +1068,44 @@ const transferError = ref('')
 const canTransfer = computed(
   () => !!fromGenre.value && !!toGenre.value && fromGenre.value !== toGenre.value,
 )
+
+const areFiltersValid = computed(() => {
+  for (const f of filters.value) {
+    const meta = fieldMeta(f.field)
+    if (f._invalid) return false
+
+    // пустые — не считаем ошибкой: они всё равно не попадут в body
+    const hasVal =
+      f.op === 'in'
+        ? (Array.isArray(f.values) && f.values.length > 0) ||
+          (typeof f.value === 'string' && f.value.trim() !== '')
+        : f.value !== '' && f.value != null
+
+    // если задано значение и тип number — убеждаемся, что это действительно число
+    if (hasVal && meta.type === 'number' && f.op !== 'in') {
+      if (typeof f.value !== 'number' || Number.isNaN(f.value)) return false
+    }
+    // CSV для number — проверим, что все токены валидны
+    if (hasVal && meta.type === 'number' && f.op === 'in') {
+      const tokens = String(f.value)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+      if (tokens.length === 0) return false
+      for (const t of tokens) {
+        if (isFloatField(f.field)) {
+          const n = Number(t.replace(',', '.'))
+          if (!Number.isFinite(n) || !inRangeFloatMinusOne(n)) return false
+        } else {
+          if (/[.,]/.test(t)) return false
+          const n = Number(t)
+          if (!Number.isFinite(n) || !Number.isInteger(n) || !inRangeIntMinusOne(n)) return false
+        }
+      }
+    }
+  }
+  return true
+})
 
 async function onTransfer() {
   if (!canTransfer.value) return

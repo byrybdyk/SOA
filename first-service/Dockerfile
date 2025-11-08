@@ -22,25 +22,17 @@ USER root
 RUN mkdir -p /opt/certs /opt/payara/config
 
 # 1) Кладём p12 и truststore (из репо)
-COPY tls/first-service/first-service.p12 /opt/certs/first-service.p12
-COPY tls/shared/truststore.jks       /opt/certs/truststore.jks
+COPY tls/first-service/keystore.p12   /opt/certs/first-service.p12
+COPY tls/truststore/truststore.p12    /opt/certs/truststore.p12
 
-# 2) Конвертируем p12 -> jks во время сборки
-#    P12_PASS — пароль, которым запакован твой first-service.p12 (ЧАСТО 123456),
-#    SRV_STORE_PASS — пароль итогового JKS (лучше оставить единым везде).
-ARG P12_PASS=123456
-ENV SRV_STORE_PASS=123456
-RUN keytool -importkeystore -noprompt \
-      -srckeystore /opt/certs/first-service.p12 -srcstoretype PKCS12 -srcstorepass 123456 \
-      -destkeystore /opt/certs/first-service.jks -deststoretype JKS      -deststorepass 123456 \
- && chown -R payara:payara /opt/certs
+RUN chown -R payara:payara /opt/certs
 
-# 3) Фиксируем post-boot команды Payara (Payara сам подхватит этот файл при старте)
+# 2) post-boot команды Payara (пусть настраивают HTTPS, указывая PKCS12)
 COPY first-service/docker/payara-https-setup.asadmin /opt/payara/config/post-boot-commands.asadmin
 RUN chown -R payara:payara /opt/payara/config
 
-# 4) JVM truststore для исходящих TLS-запросов
-ENV JAVA_OPTS="-Djavax.net.ssl.trustStore=/opt/certs/truststore.jks -Djavax.net.ssl.trustStorePassword=changeit"
+# 3) JVM truststore для исходящих TLS-запросов (PKCS12 + наш пароль)
+ENV JAVA_OPTS="-Djavax.net.ssl.trustStore=/opt/certs/truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=PKCS12"
 
 USER payara
 # (опционально) EXPOSE 8443

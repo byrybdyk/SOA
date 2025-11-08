@@ -299,14 +299,14 @@
             <tls>
             <key-stores>
                 <key-store name="serverKS">
-                    <credential-reference clear-text="123456"/>
+                    <credential-reference clear-text="changeit"/>
                     <implementation type="PKCS12"/>
                     <file path="/opt/jboss/wildfly/standalone/configuration/second-service.p12"/>
                 </key-store>
             </key-stores>
             <key-managers>
-                <key-manager name="serverKM" key-store="serverKS" alias-filter="server">
-                    <credential-reference clear-text="123456"/>
+                <key-manager name="serverKM" key-store="serverKS" alias-filter="second-service">
+                    <credential-reference clear-text="changeit"/>
                 </key-manager>
             </key-managers>
             <server-ssl-contexts>

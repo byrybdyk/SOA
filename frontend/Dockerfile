@@ -10,8 +10,8 @@ RUN npm install
 # Скопируем весь фронт и соберем его
 COPY frontend/ ./
 # В build-stage
-COPY tls/frontend/frontend.key /tls/frontend/frontend.key
-COPY tls/frontend/frontend-fullchain.crt /tls/frontend/frontend-fullchain.crt
+COPY tls/frontend/privkey.key /tls/frontend/frontend.key
+COPY tls/frontend/fullchain.crt /tls/frontend/frontend-fullchain.crt
 
 RUN npm run build
 
@@ -22,8 +22,8 @@ FROM nginx:1.25-alpine AS production-stage
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 
 # Копируем сертификаты
-COPY tls/frontend/frontend.key /etc/nginx/certs/frontend.key
-COPY tls/frontend/frontend-fullchain.crt /etc/nginx/certs/frontend.crt
+COPY tls/frontend/privkey.key /etc/nginx/certs/frontend.key
+COPY tls/frontend/fullchain.crt /etc/nginx/certs/frontend.crt
 
 # Копируем конфиг nginx
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf

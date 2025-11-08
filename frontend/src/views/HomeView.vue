@@ -101,7 +101,7 @@
 
           <button class="link danger" @click="removeFilter(idx)">Удалить</button>
         </div>
-        <p class="hint">Поддерживаются операторы: =, ≠, &gt;, ≥, &lt;, ≤, IN.</p>
+        <p class="hint">Поддерживаются операторы: =, ≠, &gt;, ≥, &lt;, ≤</p>
       </div>
     </div>
     <!-- КНОПКА СОЗДАНИЯ -->
@@ -193,7 +193,8 @@
                 :class="{
                   invalid:
                     !Number.isInteger(editForm.coordinates.x) ||
-                    normalizeNumber(editForm.coordinates.x) === false,
+                    normalizeNumber(editForm.coordinates.x) === false ||
+                    !inRangeIntMinusOne(editForm.coordinates.x),
                 }"
               />
             </label>
@@ -204,7 +205,9 @@
                 type="number"
                 step="0.01"
                 :class="{
-                  invalid: normalizeNumber(editForm.coordinates.y) === false,
+                  invalid:
+                    normalizeNumber(editForm.coordinates.y) === false ||
+                    !inRangeFloatMinusOne(editForm.coordinates.y),
                 }"
               />
             </label>
@@ -216,10 +219,14 @@
               <input
                 v-model.number="editForm.oscarsCount"
                 type="number"
-                min="0"
+                min="1"
+                :max="INT_MAX_MINUS_ONE"
                 step="1"
                 :class="{
-                  invalid: !Number.isInteger(editForm.oscarsCount) || editForm.oscarsCount <= 0,
+                  invalid:
+                    !Number.isInteger(editForm.oscarsCount) ||
+                    editForm.oscarsCount <= 0 ||
+                    !inRangeNonNegativeIntMinusOne(editForm.oscarsCount),
                 }"
               />
             </label>
@@ -284,10 +291,13 @@
                 <input
                   v-model.number="editForm.operator.location.x"
                   type="number"
+                  :min="INT_MIN"
+                  :max="INT_MAX_MINUS_ONE"
                   :class="{
                     invalid:
                       normalizeNumber(editForm.operator.location.x) === false ||
-                      !Number.isInteger(editForm.operator.location.x),
+                      !Number.isInteger(editForm.operator.location.x) ||
+                      !inRangeIntMinusOne(editForm.operator.location.x),
                   }"
                 />
               </label>
@@ -296,10 +306,13 @@
                 <input
                   v-model.number="editForm.operator.location.y"
                   type="number"
+                  :min="INT_MIN"
+                  :max="INT_MAX_MINUS_ONE"
                   :class="{
                     invalid:
                       normalizeNumber(editForm.operator.location.y) === false ||
-                      !Number.isInteger(editForm.operator.location.y),
+                      !Number.isInteger(editForm.operator.location.y) ||
+                      !inRangeIntMinusOne(editForm.operator.location.y),
                   }"
                 />
               </label>
@@ -308,10 +321,13 @@
                 <input
                   v-model.number="editForm.operator.location.z"
                   type="number"
+                  :min="INT_MIN"
+                  :max="INT_MAX_MINUS_ONE"
                   :class="{
                     invalid:
                       normalizeNumber(editForm.operator.location.z) === false ||
-                      !Number.isInteger(editForm.operator.location.z),
+                      !Number.isInteger(editForm.operator.location.z) ||
+                      !inRangeIntMinusOne(editForm.operator.location.z),
                   }"
                 />
               </label>
@@ -369,7 +385,47 @@ const COLUMNS = [
 // ---- Справочники
 const GENRES = ['DRAMA', 'FANTASY', 'THRILLER']
 const MPAA = ['PG', 'R', 'NC_17']
+const INT_MAX = 2147483647
+const INT_MAX_MINUS_ONE = INT_MAX - 1 // 2147483646
+const INT_MIN = -2147483648
 
+function inRange(n, min, max) {
+  if (n === null || n === undefined || Number.isNaN(n)) return false
+  return n >= min && n <= max
+}
+function inRangeIntMinusOne(n) {
+  // для int-полей, где верхняя граница maxInt-1
+  return inRange(n, INT_MIN, INT_MAX_MINUS_ONE)
+}
+function inRangeNonNegativeIntMinusOne(n) {
+  // для положительных int-полей (Оскары, рост, вес)
+  return inRange(n, 1, INT_MAX_MINUS_ONE)
+}
+function inRangeFloatMinusOne(n) {
+  // для дробных полей, которым тоже ставим верхнюю границу maxInt-1
+  return inRange(n, -Number(INT_MAX_MINUS_ONE), Number(INT_MAX_MINUS_ONE))
+}
+
+// на всякий случай – «пояс безопасности»: кламп перед отправкой
+function clamp(n, min, max) {
+  if (n === null || n === undefined || Number.isNaN(n)) return n
+  return Math.min(max, Math.max(min, n))
+}
+function clampPayload(p) {
+  const out = deepClone(p)
+  // координаты
+  out.coordinates.x = clamp(Number(out.coordinates.x), INT_MIN, INT_MAX_MINUS_ONE)
+  out.coordinates.y = clamp(Number(out.coordinates.y), -INT_MAX_MINUS_ONE, INT_MAX_MINUS_ONE)
+  // счётчик Оскаров >0
+  out.oscarsCount = clamp(Number(out.oscarsCount), 1, INT_MAX_MINUS_ONE)
+  // оператор
+  out.operator.height = clamp(Number(out.operator.height), 1, INT_MAX_MINUS_ONE)
+  out.operator.weight = clamp(Number(out.operator.weight), 1, INT_MAX_MINUS_ONE)
+  out.operator.location.x = clamp(Number(out.operator.location.x), INT_MIN, INT_MAX_MINUS_ONE)
+  out.operator.location.y = clamp(Number(out.operator.location.y), INT_MIN, INT_MAX_MINUS_ONE)
+  out.operator.location.z = clamp(Number(out.operator.location.z), INT_MIN, INT_MAX_MINUS_ONE)
+  return out
+}
 // ---- Фильтрация
 const FIELDS = [
   { key: 'id', label: 'ID', type: 'number' },
@@ -388,12 +444,12 @@ const FIELDS = [
   { key: 'operator.location.z', label: 'Локация Z', type: 'number' },
 ]
 
-const OP_LABELS = { eq: 'равно', ne: 'не равно', gt: '>', gte: '≥', lt: '<', lte: '≤', in: 'IN' }
+const OP_LABELS = { eq: 'равно', ne: 'не равно', gt: '>', gte: '≥', lt: '<', lte: '≤' }
 const OPS_BY_TYPE = {
-  string: ['eq', 'ne', 'in'],
-  enum: ['eq', 'ne', 'in'],
-  number: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'in'],
-  date: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'in'],
+  string: ['eq', 'ne'],
+  enum: ['eq', 'ne'],
+  number: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte'],
+  date: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte'],
 }
 
 // ---- Таблица: состояние
@@ -419,28 +475,49 @@ function openCreate() {
 const isFormValid = computed(() => {
   const f = editForm.value
   if (!f) return false
-  // имя не пустое
+
+  // имя
   if (!f.name || !f.name.trim()) return false
-  // координаты (могут быть дробные, но не null)
+
+  // координаты заданы
   if (f.coordinates.x == null || f.coordinates.y == null) return false
-  // только > 0 и целое
-  if (!Number.isInteger(f.oscarsCount) || f.oscarsCount <= 0) return false
+
+  // формат/целостность
+  if (!Number.isInteger(f.coordinates.x)) return false
   if (normalizeNumber(f.coordinates.x) === false) return false
   if (normalizeNumber(f.coordinates.y) === false) return false
-  if (normalizeNumber(f.operator.location.z) === false) return false
-  if (normalizeNumber(f.operator.location.y) === false) return false
-  if (normalizeNumber(f.operator.location.x) === false) return false
-  // жанр и рейтинг — обязательные
+
+  // ДИАПАЗОНЫ
+  if (!inRangeIntMinusOne(f.coordinates.x)) return false
+  if (!inRangeFloatMinusOne(f.coordinates.y)) return false
+
+  if (!Number.isInteger(f.oscarsCount) || f.oscarsCount <= 0) return false
+  if (!inRangeNonNegativeIntMinusOne(f.oscarsCount)) return false
+
+  // жанр/рейтинг
   if (!f.genre || !f.mpaaRating) return false
-  // оператор (допускается null, но если есть — проверяем)
+
   const op = f.operator
   if (op) {
     if (!op.name || !op.name.trim()) return false
+
     if (!Number.isInteger(op.height) || op.height <= 0) return false
+    if (!inRangeNonNegativeIntMinusOne(op.height)) return false
+
     if (!Number.isInteger(op.weight) || op.weight <= 0) return false
+    if (!inRangeNonNegativeIntMinusOne(op.weight)) return false
+
     if (op.location) {
       const loc = op.location
       if (loc.x == null || loc.y == null || loc.z == null) return false
+
+      if (!Number.isInteger(loc.x) || !inRangeIntMinusOne(loc.x)) return false
+      if (!Number.isInteger(loc.y) || !inRangeIntMinusOne(loc.y)) return false
+      if (!Number.isInteger(loc.z) || !inRangeIntMinusOne(loc.z)) return false
+
+      if (normalizeNumber(loc.x) === false) return false
+      if (normalizeNumber(loc.y) === false) return false
+      if (normalizeNumber(loc.z) === false) return false
     } else return false
   }
   return true

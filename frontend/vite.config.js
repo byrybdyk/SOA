@@ -6,7 +6,6 @@ import fs from 'fs'
 import path from 'path'
 
 export default defineConfig(({ command }) => {
-  // command === 'serve' → dev; command === 'build' → прод-сборка
   const isDev = command === 'serve'
 
   return {

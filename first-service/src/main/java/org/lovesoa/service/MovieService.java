@@ -26,7 +26,6 @@ public class MovieService {
 
     @Transactional
     public Movie createMovie(MovieCreateRequest request) {
-        // Сначала Location
         Location location = Location.builder()
                 .x(request.getOperator().getLocation().getX())
                 .y(request.getOperator().getLocation().getY())
@@ -34,7 +33,6 @@ public class MovieService {
                 .build();
         locationRepository.save(location);
 
-        // Потом Person
         Person operator = Person.builder()
                 .name(request.getOperator().getName())
                 .height(request.getOperator().getHeight())
@@ -43,14 +41,12 @@ public class MovieService {
                 .build();
         personRepository.save(operator);
 
-        // Потом Coordinates
         Coordinates coordinates = Coordinates.builder()
                 .x(request.getCoordinates().getX())
                 .y(request.getCoordinates().getY())
                 .build();
         coordinatesRepository.save(coordinates);
 
-        // Потом Movie
         Movie movie = Movie.builder()
                 .name(request.getName())
                 .coordinates(coordinates)
@@ -65,11 +61,9 @@ public class MovieService {
     }
     @Transactional
     public Movie updateMovie(Long id, MovieCreateRequest request) {
-        // Находим существующий фильм
         Movie movie = movieRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Movie not found"));
 
-        // Обновляем Location оператора
         if (request.getOperator() != null && request.getOperator().getLocation() != null) {
             Location location = movie.getOperator().getLocation();
             if (location == null) {
@@ -82,7 +76,6 @@ public class MovieService {
             locationRepository.save(location);
         }
 
-        // Обновляем Person (оператора)
         if (request.getOperator() != null) {
             Person operator = movie.getOperator();
             if (operator == null) {
@@ -96,7 +89,6 @@ public class MovieService {
             personRepository.save(operator);
         }
 
-        // Обновляем Coordinates
         if (request.getCoordinates() != null) {
             Coordinates coordinates = movie.getCoordinates();
             if (coordinates == null) {
@@ -108,7 +100,6 @@ public class MovieService {
             coordinatesRepository.save(coordinates);
         }
 
-        // Обновляем Movie
         movie.setName(request.getName());
         movie.setOscarsCount(request.getOscarsCount());
         movie.setGenre(request.getGenre() != null ? MovieGenre.valueOf(request.getGenre()) : null);

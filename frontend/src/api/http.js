@@ -1,12 +1,9 @@
 import axios from 'axios'
 
-// общие настройки
 const common = {
   headers: { 'Content-Type': 'application/json' },
-  // withCredentials: true, // если нужны куки — раскомментируй
 }
 
-// вспомогательный интерсептор c токеном
 function attachAuth(instance) {
   instance.interceptors.request.use((config) => {
     const token = localStorage.getItem('access_token')
@@ -32,10 +29,8 @@ function attachAuth(instance) {
   return instance
 }
 
-// Клиент для ПЕРВОГО сервиса
 export const httpFirst = attachAuth(axios.create({ baseURL: '/first-service/', ...common }))
 
-// Клиент для ВТОРОГО сервиса
 export const httpSecond = attachAuth(axios.create({ baseURL: '/second-service/', ...common }))
 
 export default httpFirst

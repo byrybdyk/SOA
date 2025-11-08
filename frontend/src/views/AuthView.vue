@@ -5,7 +5,6 @@
       <p class="subtitle">{{ mode === 'login' ? 'Войдите в аккаунт' : 'Создайте аккаунт' }}</p>
 
       <form @submit.prevent="onSubmit">
-        <!-- name появляется только при регистрации -->
         <template v-if="mode === 'register'">
           <label class="label">Имя</label>
           <input v-model.trim="name" type="text" required class="input" placeholder="Введите имя" />

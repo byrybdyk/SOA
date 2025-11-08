@@ -14,7 +14,6 @@
       </div>
     </header>
 
-    <!-- 🟦 Перераспределение наград -->
     <div class="card transfer-card">
       <div class="transfer-row">
         <div class="transfer-title">Перераспределить «Оскары» между жанрами</div>
@@ -46,7 +45,6 @@
       <p v-if="transferError" class="error">{{ transferError }}</p>
     </div>
 
-    <!-- ФИЛЬТРЫ -->
     <div class="filters card">
       <div class="filters-header">
         <strong>Фильтры</strong>
@@ -104,12 +102,10 @@
         <p class="hint">Поддерживаются операторы: =, ≠, &gt;, ≥, &lt;, ≤</p>
       </div>
     </div>
-    <!-- КНОПКА СОЗДАНИЯ -->
     <div class="card" style="margin-bottom: 12px; padding: 12px">
       <button class="btn" @click="openCreate">+ Добавить фильм</button>
     </div>
 
-    <!-- ТАБЛИЦА -->
     <div class="card">
       <table class="table">
         <thead>
@@ -160,14 +156,12 @@
       <div v-if="error" class="error">{{ error }}</div>
     </div>
 
-    <!-- ПАГИНАЦИЯ -->
     <div class="pager" v-if="totalPages > 1">
       <button class="pg-btn" :disabled="page === 0" @click="goTo(page - 1)">‹</button>
       <span class="pg-info">Стр. {{ page + 1 }} из {{ totalPages }}</span>
       <button class="pg-btn" :disabled="page >= totalPages - 1" @click="goTo(page + 1)">›</button>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО РЕДАКТИРОВАНИЯ -->
     <div v-if="editing" class="modal-backdrop" @click.self="cancelEdit">
       <div class="modal">
         <h3 v-if="!isCreateMode">Редактирование фильма #{{ editId }}</h3>
@@ -367,7 +361,6 @@ import { ref, computed, onMounted } from 'vue'
 import { searchMovies, updateMovie, deleteMovie, createMovie } from '../api/movies'
 import { redistributeRewards } from '../api/genres'
 
-// ---- Табличные колонки (все поля, в т.ч. вложенные)
 const COLUMNS = [
   { title: 'ID', key: 'id' },
   { title: 'Название', key: 'name' },
@@ -388,7 +381,6 @@ const COLUMNS = [
   { title: 'Loc.Z', key: 'operator.location.z' },
 ]
 
-// ---- Справочники
 const GENRES = ['DRAMA', 'FANTASY', 'THRILLER']
 const MPAA = ['PG', 'R', 'NC_17']
 const INT_MAX = 2147483647
@@ -400,31 +392,24 @@ function inRange(n, min, max) {
   return n >= min && n <= max
 }
 function inRangeIntMinusOne(n) {
-  // для int-полей, где верхняя граница maxInt-1
   return inRange(n, INT_MIN, INT_MAX_MINUS_ONE)
 }
 function inRangeNonNegativeIntMinusOne(n) {
-  // для положительных int-полей (Оскары, рост, вес)
   return inRange(n, 1, INT_MAX_MINUS_ONE)
 }
 function inRangeFloatMinusOne(n) {
-  // для дробных полей, которым тоже ставим верхнюю границу maxInt-1
   return inRange(n, -Number(INT_MAX_MINUS_ONE), Number(INT_MAX_MINUS_ONE))
 }
 
-// на всякий случай – «пояс безопасности»: кламп перед отправкой
 function clamp(n, min, max) {
   if (n === null || n === undefined || Number.isNaN(n)) return n
   return Math.min(max, Math.max(min, n))
 }
 function clampPayload(p) {
   const out = deepClone(p)
-  // координаты
   out.coordinates.x = clamp(Number(out.coordinates.x), INT_MIN, INT_MAX_MINUS_ONE)
   out.coordinates.y = clamp(Number(out.coordinates.y), -INT_MAX_MINUS_ONE, INT_MAX_MINUS_ONE)
-  // счётчик Оскаров >0
   out.oscarsCount = clamp(Number(out.oscarsCount), 1, INT_MAX_MINUS_ONE)
-  // оператор
   out.operator.height = clamp(Number(out.operator.height), 1, INT_MAX_MINUS_ONE)
   out.operator.weight = clamp(Number(out.operator.weight), 1, INT_MAX_MINUS_ONE)
   out.operator.location.x = clamp(Number(out.operator.location.x), INT_MIN, INT_MAX_MINUS_ONE)
@@ -432,7 +417,6 @@ function clampPayload(p) {
   out.operator.location.z = clamp(Number(out.operator.location.z), INT_MIN, INT_MAX_MINUS_ONE)
   return out
 }
-// ---- Фильтрация
 const FIELDS = [
   { key: 'id', label: 'ID', type: 'number' },
   { key: 'name', label: 'Название', type: 'string' },
@@ -458,7 +442,6 @@ const OPS_BY_TYPE = {
   date: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte'],
 }
 
-// ---- Таблица: состояние
 const page = ref(0)
 const size = ref(20)
 const sort = ref('id:desc')
@@ -482,25 +465,20 @@ const isFormValid = computed(() => {
   const f = editForm.value
   if (!f) return false
 
-  // имя
   if (!f.name || !f.name.trim()) return false
 
-  // координаты заданы
   if (f.coordinates.x == null || f.coordinates.y == null) return false
 
-  // формат/целостность
   if (!Number.isInteger(f.coordinates.x)) return false
   if (normalizeNumber(f.coordinates.x) === false) return false
   if (normalizeNumber(f.coordinates.y) === false) return false
 
-  // ДИАПАЗОНЫ
   if (!inRangeIntMinusOne(f.coordinates.x)) return false
   if (!inRangeFloatMinusOne(f.coordinates.y)) return false
 
   if (!Number.isInteger(f.oscarsCount) || f.oscarsCount <= 0) return false
   if (!inRangeNonNegativeIntMinusOne(f.oscarsCount)) return false
 
-  // жанр/рейтинг
   if (!f.genre || !f.mpaaRating) return false
 
   const op = f.operator
@@ -591,14 +569,12 @@ function cancelEdit() {
 function normalizeNumber(value) {
   if (value === null || value === undefined || value === '') return false
 
-  // Приводим к строке
   const str = String(value).trim().replace(',', '.')
   const num = Number(str)
   if (isNaN(num)) return false
 
-  // Проверяем количество знаков после запятой/точки
   const parts = str.split('.')
-  if (parts.length === 1) return true // нет дробной части
+  if (parts.length === 1) return true
   return parts[1].length <= 5
 }
 
@@ -609,12 +585,11 @@ async function saveEdit() {
     const payload = deepClone(editForm.value)
     if (isCreateMode.value) {
       console.log('fff' + JSON.stringify(payload))
-      // если id пустой — не отправляем его вовсе
-      await createMovie(payload) // POST /movies
+      await createMovie(payload)
     } else {
-      await updateMovie(editId.value, payload) // PUT /movies/{id}
+      await updateMovie(editId.value, payload)
     }
-    await load() // обновляем таблицу
+    await load()
     editing.value = false
     editId.value = null
     editForm.value = makeEmptyForm()
@@ -649,7 +624,6 @@ function goTo(p) {
   load()
 }
 
-// ---- Фильтры-конструктор
 let nextId = 1
 const filters = ref([])
 function addFilter() {
@@ -699,7 +673,6 @@ function onFieldChange(f) {
   f.values = []
 }
 
-// ---- helpers
 function getVal(obj, path) {
   return path.split('.').reduce((acc, k) => (acc != null ? acc[k] : undefined), obj)
 }
@@ -774,7 +747,6 @@ async function load() {
   }
 }
 
-// 🟦 Перераспределение: состояние и логика
 const fromGenre = ref('')
 const toGenre = ref('')
 const transferLoading = ref(false)
@@ -792,9 +764,9 @@ async function onTransfer() {
   transferLoading.value = true
   try {
     const res = await redistributeRewards(fromGenre.value, toGenre.value)
-    // a) показать результат
+
     transferResult.value = res?.transferredCount ?? 0
-    // б) обновить таблицу, НЕ сбрасывая фильтры/сортировку/страницу
+
     await load()
   } catch (e) {
     transferError.value = e?.response?.data?.message || 'Не удалось перераспределить награды'

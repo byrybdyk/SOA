@@ -14,7 +14,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 
 @Provider
-@PreMatching                               // <-- ключ: ловим OPTIONS до матчинга ресурсов
+@PreMatching
 @Priority(Priorities.AUTHENTICATION - 1)
 public class GlobalCorsFilter implements ContainerRequestFilter, ContainerResponseFilter {
 
@@ -37,7 +37,6 @@ public class GlobalCorsFilter implements ContainerRequestFilter, ContainerRespon
         }
     }
 
-    // PRE-FLIGHT (OPTIONS)
     @Override
     public void filter(ContainerRequestContext req) {
         if (!"OPTIONS".equalsIgnoreCase(req.getMethod())) return;
@@ -62,7 +61,6 @@ public class GlobalCorsFilter implements ContainerRequestFilter, ContainerRespon
 
         if (ALLOW_CREDENTIALS) rb.header("Access-Control-Allow-Credentials", "true");
 
-        // поддержка приватной сети (Chrome dev)
         if ("true".equalsIgnoreCase(req.getHeaderString("Access-Control-Request-Private-Network"))) {
             rb.header("Access-Control-Allow-Private-Network", "true");
         }
@@ -70,7 +68,6 @@ public class GlobalCorsFilter implements ContainerRequestFilter, ContainerRespon
         req.abortWith(rb.build());
     }
 
-    // Обычные ответы (GET/POST/…)
     @Override
     public void filter(ContainerRequestContext req, ContainerResponseContext res) {
         String origin = req.getHeaderString("Origin");

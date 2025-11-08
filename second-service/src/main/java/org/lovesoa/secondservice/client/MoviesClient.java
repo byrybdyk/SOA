@@ -20,7 +20,6 @@ public class MoviesClient {
     private final Client client = ClientBuilder.newClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // --- поиск фильмов ---
     public MoviePageDTO searchMovies(MovieSearchRequest request, String bearerToken) {
         if (request.getFilters() == null) request.setFilters(new HashMap<>());
         if (request.getSort() == null) request.setSort(new ArrayList<>());

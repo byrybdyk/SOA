@@ -27,14 +27,12 @@ public class MovieSearchService {
         CriteriaQuery<Movie> cq = cb.createQuery(Movie.class);
         Root<Movie> root = cq.from(Movie.class);
 
-        // Подготовка join для вложенных сущностей
         Map<String, From<?, ?>> joins = new HashMap<>();
         joins.put("root", root);
 
-        // Создание фильтров
         List<Predicate> predicates = new ArrayList<>();
         for (Map.Entry<String, Object> entry : filters.entrySet()) {
-            String key = entry.getKey(); // e.g. "operator.height[gt]"
+            String key = entry.getKey();
             Object value = entry.getValue();
 
             int opStart = key.indexOf("[");
@@ -50,7 +48,6 @@ public class MovieSearchService {
         }
         cq.where(predicates.toArray(new Predicate[0]));
 
-        // Сортировка
         if (sort != null && !sort.isEmpty()) {
             List<Order> orders = new ArrayList<>();
             for (String s : sort) {
@@ -62,7 +59,6 @@ public class MovieSearchService {
             cq.orderBy(orders);
         }
 
-        // Пагинация
         int pageNumber = Math.max(page, 0);
         int pageSize = Math.min(Math.max(size, 1), 100);
 
@@ -100,7 +96,6 @@ public class MovieSearchService {
         return new PageImpl<>(result, PageRequest.of(pageNumber, pageSize), total);
     }
 
-    // Получение пути с join для вложенных объектов
     private Path<?> getPath(From<?, ?> root, Map<String, From<?, ?>> joins, String fieldPath) {
         String[] parts = fieldPath.split("\\.");
         From<?, ?> current = root;
@@ -120,7 +115,6 @@ public class MovieSearchService {
         return current.get(parts[parts.length - 1]);
     }
 
-    // Создание Predicate по оператору
     private Predicate buildPredicate(CriteriaBuilder cb, Path<?> path, String operator, Object value) {
         Class<?> javaType = path.getJavaType();
         String op = operator.toLowerCase(Locale.ROOT);
@@ -209,7 +203,6 @@ public class MovieSearchService {
     private LocalDate toLocalDate(Object v) {
         if (v == null) return null;
         if (v instanceof LocalDate d) return d;
-        // принимаем "YYYY-MM-DD" (и "YYYY-M-D" — нормализуется парсером)
         return LocalDate.parse(String.valueOf(v).trim());
     }
 

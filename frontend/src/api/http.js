@@ -1,37 +1,41 @@
 import axios from 'axios'
 
-const http = axios.create({
-  // было: 'https://144.31.193.121:8443/first-service/'
-  baseURL: '/first-service/',
+// общие настройки
+const common = {
   headers: { 'Content-Type': 'application/json' },
-  // если используете куки/сессии, раскомментируйте:
-  // withCredentials: true,
-})
+  // withCredentials: true, // если нужны куки — раскомментируй
+}
 
-http.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token')
+// вспомогательный интерсептор c токеном
+function attachAuth(instance) {
+  instance.interceptors.request.use((config) => {
+    const token = localStorage.getItem('access_token')
+    const publicPaths = ['auth/login', 'auth/register']
 
-  // список путей, где токен не нужен
-  const publicPaths = ['auth/login', 'auth/register']
-
-  // если не публичный путь — добавить Bearer
-  const isPublic = publicPaths.some((path) => config.url?.includes(path))
-  if (!isPublic && token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-
-  return config
-})
-
-http.interceptors.response.use(
-  (r) => r,
-  (error) => {
-    if (error?.response?.status === 401) {
-      localStorage.removeItem('access_token')
-      if (location.pathname !== '/auth') location.href = '/auth'
+    const isPublic = publicPaths.some((p) => (config.url || '').includes(p))
+    if (!isPublic && token) {
+      config.headers.Authorization = `Bearer ${token}`
     }
-    return Promise.reject(error)
-  },
-)
+    return config
+  })
 
-export default http
+  instance.interceptors.response.use(
+    (r) => r,
+    (error) => {
+      if (error?.response?.status === 401) {
+        localStorage.removeItem('access_token')
+        if (location.pathname !== '/auth') location.href = '/auth'
+      }
+      return Promise.reject(error)
+    },
+  )
+  return instance
+}
+
+// Клиент для ПЕРВОГО сервиса
+export const httpFirst = attachAuth(axios.create({ baseURL: '/first-service/', ...common }))
+
+// Клиент для ВТОРОГО сервиса
+export const httpSecond = attachAuth(axios.create({ baseURL: '/second-service/', ...common }))
+
+export default httpFirst

@@ -7,6 +7,12 @@ import org.lovesoa.models.Movie;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 
 @Service
@@ -117,8 +123,36 @@ public class MovieSearchService {
     // Создание Predicate по оператору
     private Predicate buildPredicate(CriteriaBuilder cb, Path<?> path, String operator, Object value) {
         Class<?> javaType = path.getJavaType();
+        String op = operator.toLowerCase(Locale.ROOT);
 
-        switch (operator.toLowerCase()) {
+        if (LocalDate.class.equals(javaType)) {
+            LocalDate v = toLocalDate(value);
+            Path<LocalDate> p = (Path<LocalDate>) path;
+            switch (op) {
+                case "eq":  return cb.equal(p, v);
+                case "ne":  return cb.notEqual(p, v);
+                case "gt":  return cb.greaterThan(p, v);
+                case "ge":
+                case "gte": return cb.greaterThanOrEqualTo(p, v);
+                case "lt":  return cb.lessThan(p, v);
+                case "le":
+                case "lte": return cb.lessThanOrEqualTo(p, v);
+                case "in": {
+                    var in = cb.in(p);
+                    if (value instanceof Collection<?> c) {
+                        for (Object o : c) in.value(toLocalDate(o));
+                    } else if (value != null && value.getClass().isArray()) {
+                        for (Object o : (Object[]) value) in.value(toLocalDate(o));
+                    } else {
+                        in.value(v);
+                    }
+                    return in;
+                }
+                default:
+                    throw new IllegalArgumentException("Operator " + operator + " is not supported for field type " + javaType);
+            }
+        }
+        switch (op) {
             case "eq": return cb.equal(path, value);
             case "ne": return cb.notEqual(path, value);
             case "gt":
@@ -143,10 +177,41 @@ public class MovieSearchService {
                 break;
             case "in":
                 if (value instanceof Collection<?>) return path.in((Collection<?>) value);
-                if (value.getClass().isArray()) return path.in(Arrays.asList((Object[]) value));
+                if (value != null && value.getClass().isArray()) return path.in(Arrays.asList((Object[]) value));
                 break;
         }
         throw new IllegalArgumentException("Operator " + operator + " is not supported for field type " + javaType);
     }
+
+    private LocalDateTime coerceToLocalDateTime(Object v) {
+        if (v == null) return null;
+        if (v instanceof LocalDateTime dt) return dt;
+
+        String s = String.valueOf(v).trim();
+
+        try {
+            return LocalDateTime.parse(s, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        } catch (DateTimeParseException ignored) {}
+
+        try {
+            OffsetDateTime odt = OffsetDateTime.parse(s, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+
+            return odt.withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        } catch (DateTimeParseException ignored) {}
+
+        if (s.matches("^\\d{4}-\\d{1,2}-\\d{1,2}$")) {
+            return LocalDateTime.parse(s + "T00:00:00", DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        }
+
+        throw new IllegalArgumentException("Invalid LocalDateTime: " + s);
+    }
+
+    private LocalDate toLocalDate(Object v) {
+        if (v == null) return null;
+        if (v instanceof LocalDate d) return d;
+        // принимаем "YYYY-MM-DD" (и "YYYY-M-D" — нормализуется парсером)
+        return LocalDate.parse(String.valueOf(v).trim());
+    }
+
 
 }

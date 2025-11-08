@@ -16,15 +16,16 @@ services:
       retries: 5
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    restart: always
 
   first-service:
     build:
-      context: . # теперь корень проекта
+      context: .
       dockerfile: first-service/Dockerfile
     container_name: first-service
-    ports:
-      - "8443:8443" # HTTPS приложения
-      - "4848:4848" # Payara admin (по http, только локально)
+    # наружу больше НЕ публикуем: ходим через фронтовый Nginx
+    expose:
+      - "8443"
     depends_on:
       postgres:
         condition: service_healthy
@@ -37,7 +38,6 @@ services:
       JAVA_OPTS: >
         -Djavax.net.ssl.trustStore=/opt/certs/truststore.jks
         -Djavax.net.ssl.trustStorePassword=changeit
-      # Выполняем post-boot команды Payara (см. скрипт)
       SRV_STORE_PASS: 123456
     volumes:
       - gradle-cache:/home/gradle/.gradle
@@ -45,11 +45,12 @@ services:
 
   second-service:
     build:
-      context: . # тоже из корня
+      context: .
       dockerfile: second-service/Dockerfile
     container_name: second-service
-    ports:
-      - "8444:8443" # HTTPS второго сервиса наружу на другой порт
+    # тоже не торчим наружу
+    expose:
+      - "8443"
     depends_on:
       - first-service
     environment:
@@ -68,7 +69,7 @@ services:
       dockerfile: frontend/Dockerfile
     container_name: frontend
     ports:
-      - "8445:443"
+      - "8445:443" # фронт доступен снаружи по https://144.31.193.121:8445
     depends_on:
       - first-service
       - second-service

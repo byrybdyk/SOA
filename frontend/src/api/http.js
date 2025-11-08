@@ -1,8 +1,11 @@
 import axios from 'axios'
 
 const http = axios.create({
-  baseURL: 'https://144.31.193.121:8443/first-service/',
+  // было: 'https://144.31.193.121:8443/first-service/'
+  baseURL: '/first-service/',
   headers: { 'Content-Type': 'application/json' },
+  // если используете куки/сессии, раскомментируйте:
+  // withCredentials: true,
 })
 
 http.interceptors.request.use((config) => {

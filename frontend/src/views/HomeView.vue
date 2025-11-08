@@ -219,13 +219,13 @@
               <input
                 v-model.number="editForm.oscarsCount"
                 type="number"
-                min="1"
+                min="0"
                 :max="INT_MAX_MINUS_ONE"
                 step="1"
                 :class="{
                   invalid:
                     !Number.isInteger(editForm.oscarsCount) ||
-                    editForm.oscarsCount <= 0 ||
+                    editForm.oscarsCount < 0 ||
                     !inRangeNonNegativeIntMinusOne(editForm.oscarsCount),
                 }"
               />
@@ -264,10 +264,13 @@
                   v-model.number="editForm.operator.height"
                   type="number"
                   min="1"
+                  :max="INT_MAX_MINUS_ONE"
                   step="1"
                   :class="{
                     invalid:
-                      !Number.isInteger(editForm.operator.height) || editForm.operator.height <= 0,
+                      !Number.isInteger(editForm.operator.height) ||
+                      editForm.operator.height <= 0 ||
+                      !inRangeNonNegativeIntMinusOne(editForm.operator.height),
                   }"
                 />
               </label>
@@ -277,10 +280,13 @@
                   v-model.number="editForm.operator.weight"
                   type="number"
                   min="1"
+                  :max="INT_MAX_MINUS_ONE"
                   step="1"
                   :class="{
                     invalid:
-                      !Number.isInteger(editForm.operator.weight) || editForm.operator.weight <= 0,
+                      !Number.isInteger(editForm.operator.weight) ||
+                      editForm.operator.weight <= 0 ||
+                      !inRangeNonNegativeIntMinusOne(editForm.operator.weight),
                   }"
                 />
               </label>
